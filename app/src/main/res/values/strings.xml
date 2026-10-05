@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Chime</string>
+    <string name="goals_title">Goals</string>
+    <string name="settings_title">Settings</string>
+    <string name="usage_access">Usage access</string>
+    <string name="usage_access_granted">Granted</string>
+    <string name="usage_access_not_granted">Not granted</string>
+    <string name="usage_access_explanation">Allow Chime to measure app usage and enforce daily limits.</string>
+    <string name="usage_access_limit_warning">Daily app and category limits cannot be enforced until usage access is granted.</string>
+    <string name="category_daily_limits">Category default daily limits</string>
+    <string name="category_daily_limit_value">%1$d min (0 = none)</string>
+    <string name="category_daily_limit_title">Default daily limit for %1$s</string>
+    <string name="daily_limit">Daily limit</string>
+    <string name="daily_limit_minutes">Minutes</string>
+    <string name="daily_limit_clear_hint">Enter 0 to clear. Choose 1-720 minutes.</string>
+    <string name="save_daily_limit">Save limit</string>
+    <string name="daily_limit_reached">Daily limit reached</string>
+    <string name="daily_limit_usage">Used %1$d min of %2$d min today</string>
+    <string name="limit_override_reason">Why do you need to open it?</string>
+    <string name="daily_limit_warning">%1$s is nearing its daily limit.</string>
+    <string name="daily_limit_check_failed">Could not check daily app limits.</string>
+    <string name="open_apps">Apps</string>
+    <string name="todays_focus">Today’s focus</string>
+    <string name="no_priorities_prompt">Choose a few goals to keep today focused.</string>
+    <string name="choose_priorities">Choose priorities</string>
+    <string name="next_task">Next task</string>
+    <string name="more_tasks">+%1$d more</string>
+    <string name="active_focus_mode">Focus mode: %1$s</string>
+    <string name="focus_modes">Focus modes</string>
+    <string name="focus_mode_work">Work</string>
+    <string name="focus_mode_study">Study</string>
+    <string name="focus_mode_sleep">Sleep</string>
+    <string name="focus_mode_deep_work">Deep Work</string>
+    <string name="manage_focus_modes">Manage focus modes</string>
+    <string name="choose_focus_mode">Choose focus mode</string>
+    <string name="add_focus_mode">Add mode</string>
+    <string name="edit_focus_mode">Edit mode</string>
+    <string name="delete_focus_mode">Delete mode</string>
+    <string name="focus_mode_name">Mode name</string>
+    <string name="allowed_apps">Allowed apps</string>
+    <string name="focus_schedule">Schedule</string>
+    <string name="no_focus_schedule">No schedule</string>
+    <string name="focus_schedule_set">Scheduled</string>
+    <string name="focus_start_time">Start: %1$s</string>
+    <string name="focus_end_time">End: %1$s</string>
+    <string name="focus_start_time_title">Choose start time</string>
+    <string name="focus_end_time_title">Choose end time</string>
+    <string name="focus_mode_invalid">Enter a name, choose a day, and set valid times.</string>
+    <string name="focus_mode_action_failed">Could not update this focus mode.</string>
+    <string name="save_focus_mode">Save mode</string>
+    <string name="suppress_notifications">Suppress notifications (Prompt 16)</string>
+    <string name="end_focus_mode">End mode</string>
+    <string name="pause_mode_15_minutes">Pause for 15 minutes</string>
+    <string name="wind_down_title">Wind down</string>
+    <string name="wind_down_message">Your Sleep mode is active. Take a moment to get ready for rest.</string>
+    <string name="tomorrow_priority">Tomorrow’s first priority: %1$s</string>
+    <string name="open_allowed_apps">Open allowed apps</string>
+    <string name="start_focus_session">Start focus session</string>
+    <string name="session_complete">Session complete</string>
+    <string name="focus_session_channel">Focus session reminders</string>
+    <string name="focus_session_presets">Choose a focus session</string>
+    <string name="focus_session_25_5">25 minutes focus · 5 minute break</string>
+    <string name="focus_session_50_10">50 minutes focus · 10 minute break</string>
+    <string name="focus_session_custom">Custom minutes</string>
+    <string name="focus_session_start">Begin session</string>
+    <string name="focus_session_remaining">%1$d:%2$02d remaining</string>
+    <string name="focus_session_end_early">End early</string>
+    <string name="focus_session_active">Focus session</string>
+    <string name="focus_session_invalid_minutes">Choose a session between 1 and 240 minutes.</string>
+    <string name="focus_session_action_failed">Could not save or complete this focus session.</string>
+    <string name="task_update_failed">Could not update task progress.</string>
+    <string name="search_apps">Search apps</string>
+    <string name="no_apps_found">No apps found</string>
+    <string name="work_profile">work</string>
+    <string name="launch_failed">Could not launch this app.</string>
+    <string name="intercept_question">Why are you opening this?</string>
+    <string name="intercept_priority_goal">Your priority: %1$s</string>
+    <string name="intercept_countdown">Take a moment. Continue in %1$d seconds.</string>
+    <string name="intercept_action_failed">Could not complete this choice. Please try again.</string>
+    <string name="intercept_go_back">Go back</string>
+    <string name="intercept_open_minutes">Open for %1$d min</string>
+    <string name="intercept_grant_countdown">Open for %1$d min (%2$d s)</string>
+    <string name="intercept_continue_once">Continue once</string>
+    <string name="intercept_continue_countdown">Continue once (%1$d s)</string>
+    <string name="grant_notification_channel">App session reminders</string>
+    <string name="grant_expired">Time\'s up on %1$s</string>
+    <string name="pin_to_dock">Pin to dock</string>
+    <string name="unpin_from_dock">Unpin from dock</string>
+    <string name="pin_limit_reached">The dock can hold up to 4 apps.</string>
+    <string name="hide_app">Hide app</string>
+    <string name="unhide_app">Unhide</string>
+    <string name="hidden_apps">Hidden apps</string>
+    <string name="no_hidden_apps">No hidden apps</string>
+    <string name="category">Category</string>
+    <string name="category_productive">Productive</string>
+    <string name="category_neutral">Neutral</string>
+    <string name="category_distracting">Distracting</string>
+    <string name="app_info">App info</string>
+    <string name="uninstall_app">Uninstall</string>
+    <string name="app_action_failed">Could not open the requested system screen.</string>
+    <string name="drawer_mode">Drawer display</string>
+    <string name="drawer_mode_text">Text</string>
+    <string name="drawer_mode_icons">Icons</string>
+    <string name="drawer_mode_grid">Grid</string>
+    <string name="goal_status_active">Active</string>
+    <string name="goal_status_paused">Paused</string>
+    <string name="goal_status_completed">Completed</string>
+    <string name="goal_status_archived">Archived</string>
+    <string name="create_goal">Create goal</string>
+    <string name="edit_goal">Edit goal</string>
+    <string name="daily_priorities">Today’s priorities</string>
+    <string name="loading_goals">Loading goals…</string>
+    <string name="no_goals">No goals in this category yet.</string>
+    <string name="nothing_scheduled_today">Nothing scheduled today</string>
+    <string name="goal_daily_progress">%1$d%% complete · %2$d tasks scheduled</string>
+    <string name="best_current_streak">Best current streak: %1$d days</string>
+    <string name="goal_title_label">Title</string>
+    <string name="goal_title_required">Enter a title.</string>
+    <string name="goal_title_too_long">Title must be 80 characters or fewer.</string>
+    <string name="character_count">%1$d / %2$d</string>
+    <string name="goal_why_label">Why is this goal important?</string>
+    <string name="goal_why_too_long">Why must be 300 characters or fewer.</string>
+    <string name="goal_category_value">Category: %1$s</string>
+    <string name="choose_target_date">Choose target date</string>
+    <string name="clear_target_date">Clear date</string>
+    <string name="measurable_target_optional">Measurable target (optional)</string>
+    <string name="target_unit">Unit</string>
+    <string name="target_value">Target value</string>
+    <string name="target_value_invalid">Enter a positive target and provide both unit and value.</string>
+    <string name="save_goal">Save goal</string>
+    <string name="cancel">Cancel</string>
+    <string name="archive_goal">Archive</string>
+    <string name="delete_goal">Delete goal</string>
+    <string name="confirm_delete_goal">Delete this goal and all of its tasks and logs?</string>
+    <string name="confirm_archive_goal">Archive this goal?</string>
+    <string name="confirm">Confirm</string>
+    <string name="goal_not_found">This goal could not be found.</string>
+    <string name="goal_save_failed">Could not save this goal. Please try again.</string>
+    <string name="goal_delete_failed">Could not delete this goal. Please try again.</string>
+    <string name="goal_progress_percent">%1$d%% of today’s tasks complete</string>
+    <string name="no_goal_why">No reason added yet.</string>
+    <string name="pause_goal">Pause</string>
+    <string name="complete_goal">Complete</string>
+    <string name="resume_goal">Resume</string>
+    <string name="tasks_for_today">Tasks</string>
+    <string name="add_task">Add task</string>
+    <string name="edit_task">Edit task</string>
+    <string name="delete_task">Delete task</string>
+    <string name="task_title_label">Task title</string>
+    <string name="task_title_required">Enter a task title.</string>
+    <string name="recurrence_daily">Daily</string>
+    <string name="recurrence_weekdays">Specific weekdays</string>
+    <string name="choose_at_least_one_day">Choose at least one weekday.</string>
+    <string name="add_reminder_time">Add reminder time</string>
+    <string name="reminder_at">Reminder: %1$s</string>
+    <string name="clear_reminder">Clear reminder</string>
+    <string name="today_value">Today’s value</string>
+    <string name="today_value_invalid">Enter a valid non-negative number.</string>
+    <string name="save_task">Save task</string>
+    <string name="confirm_delete_task">Delete this task and its logs?</string>
+    <string name="task_streak_and_freezes">Current streak: %1$d days · Freeze credits: %2$d</string>
+    <string name="recent_logs">Recent logs</string>
+    <string name="no_recent_logs">No recent logs.</string>
+    <string name="log_completed">%1$s completed · %2$s</string>
+    <string name="log_not_completed">%1$s not completed · %2$s</string>
+    <string name="select_up_to_three_priorities">Choose up to three active goals and arrange their order.</string>
+    <string name="selected_priorities">Selected priorities</string>
+    <string name="active_goals_label">Active goals</string>
+    <string name="priority_position">Priority %1$d</string>
+    <string name="remove_priority">Remove</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
+    <string name="save_priorities">Save priorities</string>
+    <string name="priorities_saved">Priorities saved.</string>
+    <string name="too_many_priorities">Choose no more than three priorities.</string>
+    <string name="duplicate_priority">A goal cannot be selected more than once.</string>
+    <string name="priority_goal_missing">A selected goal no longer exists.</string>
+    <string name="priority_goal_not_active">Only active goals can be priorities.</string>
+    <string name="link_to_goal">Link to goal</string>
+    <string name="no_linked_goal">No linked goal</string>
+    <string name="goal_choice">%1$s</string>
+    <string name="linked_goal_choice">%1$s · Linked</string>
+    <string name="link_goal_failed">Could not update the linked goal.</string>
+    <string-array name="goal_categories">
+        <item>Health</item>
+        <item>Learning</item>
+        <item>Career</item>
+        <item>Finance</item>
+        <item>Relationships</item>
+        <item>Personal</item>
+        <item>Other</item>
+    </string-array>
+    <string-array name="weekdays">
+        <item>Monday</item>
+        <item>Tuesday</item>
+        <item>Wednesday</item>
+        <item>Thursday</item>
+        <item>Friday</item>
+        <item>Saturday</item>
+        <item>Sunday</item>
+    </string-array>
+</resources>

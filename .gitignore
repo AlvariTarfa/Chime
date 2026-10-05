@@ -1,0 +1,19 @@
+# Android
+.gradle/
+build/
+captures/
+local.properties
+*.keystore
+*.jks
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Gradle
+gradle-app.setting
+!gradle-wrapper.jar
+
+# Local environment
+.DS_Store
