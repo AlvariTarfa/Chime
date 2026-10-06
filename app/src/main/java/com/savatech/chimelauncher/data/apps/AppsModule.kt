@@ -16,4 +16,8 @@ abstract class AppsModule {
     @Binds
     @Singleton
     abstract fun bindAppConfigSource(repository: AppConfigRepository): AppConfigSource
+
+    @Binds
+    @Singleton
+    abstract fun bindAppClassificationStore(repository: AppConfigRepository): AppClassificationStore
 }

@@ -23,6 +23,8 @@ import com.savatech.chimelauncher.R
 import com.savatech.chimelauncher.core.theme.WallpaperScrimAlpha
 import com.savatech.chimelauncher.data.apps.AppInfo
 import com.savatech.chimelauncher.data.apps.IconCache
+import com.savatech.chimelauncher.data.settings.IconShape
+import com.savatech.chimelauncher.core.theme.LocalLayoutMetrics
 import com.savatech.chimelauncher.domain.usecase.GoalOverview
 import com.savatech.chimelauncher.feature.drawer.AppIcon
 
@@ -82,16 +84,24 @@ internal fun DockAppItem(
     app: AppInfo,
     showIcon: Boolean,
     iconCache: IconCache?,
+    iconShape: IconShape,
+    iconPackPackage: String?,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
+    val layout = LocalLayoutMetrics.current
     Column(
         modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .padding(
+                horizontal = (layout.horizontalPadding / 2).dp,
+                vertical = (layout.verticalPadding / 2).dp,
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy((layout.itemSpacing / 2).dp),
     ) {
-        if (showIcon && iconCache != null) AppIcon(app, iconCache, 40.dp)
+        if (showIcon && iconCache != null) {
+            AppIcon(app, iconCache, 40.dp, iconShape, iconPackPackage)
+        }
         Text(app.label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
     }
 }

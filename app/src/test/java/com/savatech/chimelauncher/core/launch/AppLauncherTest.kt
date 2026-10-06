@@ -155,6 +155,10 @@ class AppLauncherTest {
             ) = Unit
             override suspend fun createGrant(packageName: String, minutes: Int) =
                 AppGrant(packageName, 0)
+            override suspend fun eventsBetween(
+                startInclusive: Long,
+                endExclusive: Long,
+            ): List<InterceptEvent> = emptyList()
         },
         settings = object : InterceptSettings {
             override val frictionLevel: Flow<FrictionLevel> = MutableStateFlow(FrictionLevel.BALANCED)

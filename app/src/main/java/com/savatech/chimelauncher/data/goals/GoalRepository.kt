@@ -29,6 +29,7 @@ interface GoalRepository {
     suspend fun addTask(task: TaskModel)
     suspend fun updateTask(task: TaskModel): Boolean
     suspend fun deleteTask(taskId: String): Boolean
+    suspend fun getTask(taskId: String): TaskModel?
     fun observeTasks(goalId: String): Flow<List<TaskModel>>
 
     suspend fun upsertTaskLog(log: TaskLogModel)
@@ -76,6 +77,9 @@ class RoomGoalRepository @Inject constructor(
         val task = taskDao.getById(taskId) ?: return false
         return taskDao.delete(task) > 0
     }
+
+    override suspend fun getTask(taskId: String): TaskModel? =
+        taskDao.getById(taskId)?.toModel()
 
     override fun observeTasks(goalId: String): Flow<List<TaskModel>> =
         taskDao.observeByGoal(goalId).map { tasks -> tasks.map { it.toModel() } }

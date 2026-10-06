@@ -46,6 +46,7 @@ import com.savatech.chimelauncher.data.apps.AppConfigResult
 import com.savatech.chimelauncher.data.apps.AppInfo
 import com.savatech.chimelauncher.data.apps.IconCache
 import com.savatech.chimelauncher.data.settings.DrawerMode
+import com.savatech.chimelauncher.core.theme.LocalLayoutMetrics
 import com.savatech.chimelauncher.core.launch.LaunchResult
 import com.savatech.chimelauncher.core.launch.PauseLaunchArgs
 import com.savatech.chimelauncher.feature.limits.DailyLimitWarningEffect
@@ -60,6 +61,7 @@ fun DrawerScreen(
     viewModel: DrawerViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val layout = LocalLayoutMetrics.current
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -130,6 +132,8 @@ fun DrawerScreen(
                             GridAppItem(
                                 app = app,
                                 iconCache = viewModel.iconCache,
+                                iconShape = uiState.iconShape,
+                                iconPackPackage = uiState.iconPackPackage,
                                 onClick = { launchApp(app) },
                                 onLongClick = { selectedApp = app },
                             )
@@ -143,6 +147,12 @@ fun DrawerScreen(
                             ListAppItem(
                                 app = app,
                                 showIcon = uiState.drawerMode == DrawerMode.ICONS,
+                                iconShape = uiState.iconShape,
+                                iconPackPackage = uiState.iconPackPackage,
+                                rowHeight = layout.rowHeight.dp,
+                                horizontalPadding = layout.horizontalPadding.dp,
+                                verticalPadding = layout.verticalPadding.dp,
+                                itemSpacing = layout.itemSpacing.dp,
                                 viewModel = viewModel,
                                 onClick = { launchApp(app) },
                                 onLongClick = { selectedApp = app },
@@ -197,6 +207,8 @@ fun DrawerScreen(
             app = app,
             config = config,
             iconCache = viewModel.iconCache,
+            iconShape = uiState.iconShape,
+            iconPackPackage = uiState.iconPackPackage,
             onDismiss = { selectedApp = null },
             onPin = { pinned -> togglePin(app, pinned) },
             onHide = {
@@ -221,6 +233,12 @@ fun DrawerScreen(
 private fun ListAppItem(
     app: AppInfo,
     showIcon: Boolean,
+    iconShape: com.savatech.chimelauncher.data.settings.IconShape,
+    iconPackPackage: String?,
+    rowHeight: androidx.compose.ui.unit.Dp,
+    horizontalPadding: androidx.compose.ui.unit.Dp,
+    verticalPadding: androidx.compose.ui.unit.Dp,
+    itemSpacing: androidx.compose.ui.unit.Dp,
     viewModel: DrawerViewModel,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -228,13 +246,13 @@ private fun ListAppItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
+            .heightIn(min = rowHeight)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+        horizontalArrangement = Arrangement.spacedBy(itemSpacing),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (showIcon) AppIcon(app, viewModel.iconCache, 40.dp)
+        if (showIcon) AppIcon(app, viewModel.iconCache, 40.dp, iconShape, iconPackPackage)
         Text(app.label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         if (app.isWorkProfile) {
             Text(stringResource(R.string.work_profile), style = MaterialTheme.typography.labelSmall)
@@ -246,18 +264,24 @@ private fun ListAppItem(
 private fun GridAppItem(
     app: AppInfo,
     iconCache: IconCache,
+    iconShape: com.savatech.chimelauncher.data.settings.IconShape,
+    iconPackPackage: String?,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
+    val layout = LocalLayoutMetrics.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = 4.dp, vertical = 10.dp),
+            .padding(
+                horizontal = (layout.horizontalPadding / 4).dp,
+                vertical = layout.verticalPadding.dp,
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(layout.itemSpacing.dp),
     ) {
-        AppIcon(app, iconCache, 48.dp)
+        AppIcon(app, iconCache, 48.dp, iconShape, iconPackPackage)
         Text(
             text = app.label,
             style = MaterialTheme.typography.labelMedium,

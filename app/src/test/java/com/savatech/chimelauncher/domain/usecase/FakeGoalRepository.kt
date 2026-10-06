@@ -70,6 +70,9 @@ internal class FakeGoalRepository : GoalRepository {
         return true
     }
 
+    override suspend fun getTask(taskId: String): TaskModel? =
+        tasksByGoal.values.flatten().firstOrNull { it.id == taskId }
+
     override fun observeTasks(goalId: String): Flow<List<TaskModel>> =
         taskStates.getOrPut(goalId) { MutableStateFlow(tasksByGoal[goalId].orEmpty()) }
 

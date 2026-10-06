@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.savatech.chimelauncher.data.goals.GoalRepository
 import com.savatech.chimelauncher.domain.model.GoalModel
 import com.savatech.chimelauncher.domain.model.GoalStatus
+import com.savatech.chimelauncher.service.SchedulerRescheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
 import java.util.UUID
@@ -43,6 +44,7 @@ enum class GoalEditFailure { NOT_FOUND, SAVE_FAILED, DELETE_FAILED }
 class GoalEditViewModel @Inject constructor(
     private val repository: GoalRepository,
     savedStateHandle: SavedStateHandle,
+    private val schedulerFacade: SchedulerRescheduler,
 ) : ViewModel() {
     private val goalId = savedStateHandle.get<String>("goalId").takeUnless { it == NEW_GOAL_ID }
     private val _uiState = MutableStateFlow(GoalEditUiState(goalId = goalId, isLoading = goalId != null))
@@ -126,6 +128,7 @@ class GoalEditViewModel @Inject constructor(
             try {
                 if (goalId == null) repository.createGoal(model)
                 else if (!repository.updateGoal(model)) error("Goal update failed")
+                schedulerFacade.rescheduleAll()
                 _uiState.update { it.copy(saved = true, failure = null) }
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -143,6 +146,7 @@ class GoalEditViewModel @Inject constructor(
                 if (existing == null || !repository.updateGoal(existing.copy(status = status))) {
                     _uiState.update { it.copy(failure = GoalEditFailure.SAVE_FAILED) }
                 } else {
+                    schedulerFacade.rescheduleAll()
                     _uiState.update { it.copy(status = status, saved = status == GoalStatus.ARCHIVED) }
                 }
             } catch (cancelled: CancellationException) {
@@ -161,6 +165,7 @@ class GoalEditViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 if (repository.deleteGoal(goalId)) {
+                    schedulerFacade.rescheduleAll()
                     _uiState.update { it.copy(saved = true, showDeleteConfirmation = false) }
                 } else {
                     _uiState.update { it.copy(failure = GoalEditFailure.DELETE_FAILED) }

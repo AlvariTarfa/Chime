@@ -8,16 +8,26 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.savatech.chimelauncher.domain.model.AppCategory
 import com.savatech.chimelauncher.domain.focus.ManualModeOverride
+import com.savatech.chimelauncher.service.NotificationPermissionStore
 import java.time.LocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+interface OnboardingSettings {
+    val onboardingCompleted: Flow<Boolean>
+    val frictionLevel: Flow<FrictionLevel>
+    val frictionConfigured: Flow<Boolean>
+    suspend fun setOnboardingCompleted(value: Boolean)
+    suspend fun setFrictionLevel(value: FrictionLevel)
+    suspend fun setBaseDelaySeconds(value: Int)
+}
+
 @Singleton
 class SettingsRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
-) : InterceptSettings {
+) : InterceptSettings, NotificationPermissionStore, OnboardingSettings {
     val drawerMode: Flow<DrawerMode> = dataStore.data.map { preferences ->
         DrawerMode.fromStorage(preferences[Keys.drawerMode] ?: DrawerMode.TEXT.name)
     }
@@ -25,6 +35,8 @@ class SettingsRepository @Inject constructor(
     override val frictionLevel: Flow<FrictionLevel> = dataStore.data.map { preferences ->
         FrictionLevel.fromStorage(preferences[Keys.frictionLevel] ?: FrictionLevel.BALANCED.name)
     }
+    override val frictionConfigured: Flow<Boolean> =
+        dataStore.data.map { it[Keys.frictionLevel] != null }
 
     override val baseDelaySeconds: Flow<Int> = dataStore.data.map { preferences ->
         preferences[Keys.baseDelaySeconds]
@@ -44,6 +56,10 @@ class SettingsRepository @Inject constructor(
     val morningCheckInEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.morningCheckInEnabled] ?: false }
     val eveningCheckInTime: Flow<String> = dataStore.data.map { it[Keys.eveningCheckInTime] ?: "21:00" }
     val eveningCheckInEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.eveningCheckInEnabled] ?: false }
+    val weeklyCheckInDay: Flow<String> = dataStore.data.map { it[Keys.weeklyCheckInDay] ?: "SUNDAY" }
+    val weeklyCheckInTime: Flow<String> = dataStore.data.map { it[Keys.weeklyCheckInTime] ?: "17:00" }
+    val weeklyCheckInEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.weeklyCheckInEnabled] ?: false }
+    val nudgesEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.nudgesEnabled] ?: false }
     val quietHoursStart: Flow<String?> = dataStore.data.map { it[Keys.quietHoursStart] }
     val quietHoursEnd: Flow<String?> = dataStore.data.map { it[Keys.quietHoursEnd] }
 
@@ -52,12 +68,26 @@ class SettingsRepository @Inject constructor(
     }
 
     val useDynamicColor: Flow<Boolean> = dataStore.data.map { it[Keys.useDynamicColor] ?: true }
-    val iconShape: Flow<String> = dataStore.data.map { it[Keys.iconShape] ?: DEFAULT_ICON_SHAPE }
-    val fontPreset: Flow<String> = dataStore.data.map { it[Keys.fontPreset] ?: DEFAULT_FONT_PRESET }
+    val iconShape: Flow<IconShape> = dataStore.data.map {
+        IconShape.fromStorage(it[Keys.iconShape] ?: IconShape.CIRCLE.name)
+    }
+    val fontPreset: Flow<FontPreset> = dataStore.data.map {
+        FontPreset.fromStorage(it[Keys.fontPreset] ?: FontPreset.DEFAULT.name)
+    }
+    val layoutDensity: Flow<LayoutDensityPreset> = dataStore.data.map {
+        LayoutDensityPreset.fromStorage(it[Keys.layoutDensity] ?: LayoutDensityPreset.COMFORTABLE.name)
+    }
+    val accentColorIndex: Flow<Int> = dataStore.data.map {
+        (it[Keys.accentColorIndex] ?: 0).coerceIn(0, ACCENT_COLOR_COUNT - 1)
+    }
     val iconPackPackage: Flow<String?> = dataStore.data.map { it[Keys.iconPackPackage] }
-    val onboardingCompleted: Flow<Boolean> = dataStore.data.map { it[Keys.onboardingCompleted] ?: false }
+    val leftSwipeTarget: Flow<SwipeAppTarget?> = dataStore.data.map { it[Keys.leftSwipeTarget]?.toSwipeAppTarget() }
+    val rightSwipeTarget: Flow<SwipeAppTarget?> = dataStore.data.map { it[Keys.rightSwipeTarget]?.toSwipeAppTarget() }
+    override val onboardingCompleted: Flow<Boolean> =
+        dataStore.data.map { it[Keys.onboardingCompleted] ?: false }
     val assumedMinutesPerOpen: Flow<Int> = dataStore.data.map { it[Keys.assumedMinutesPerOpen] ?: 5 }
-    val notificationPermissionRequested: Flow<Boolean> =
+    val focusScoreEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.focusScoreEnabled] ?: false }
+    override val notificationPermissionRequested: Flow<Boolean> =
         dataStore.data.map { it[Keys.notificationPermissionRequested] ?: false }
     val focusModesSeeded: Flow<Boolean> = dataStore.data.map { it[Keys.focusModesSeeded] ?: false }
     val manualModeOverride: Flow<ManualModeOverride?> = dataStore.data.map { preferences ->
@@ -72,8 +102,12 @@ class SettingsRepository @Inject constructor(
     }
 
     suspend fun setDrawerMode(value: DrawerMode) = dataStore.edit { it[Keys.drawerMode] = value.name }
-    suspend fun setFrictionLevel(value: FrictionLevel) = dataStore.edit { it[Keys.frictionLevel] = value.name }
-    suspend fun setBaseDelaySeconds(value: Int) = dataStore.edit { it[Keys.baseDelaySeconds] = value }
+    override suspend fun setFrictionLevel(value: FrictionLevel) {
+        dataStore.edit { it[Keys.frictionLevel] = value.name }
+    }
+    override suspend fun setBaseDelaySeconds(value: Int) {
+        dataStore.edit { it[Keys.baseDelaySeconds] = value }
+    }
     suspend fun setCategoryDailyLimit(category: AppCategory, minutes: Int?) {
         require(minutes == null || minutes in 1..MAX_DAILY_LIMIT_MINUTES)
         dataStore.edit { preferences ->
@@ -91,18 +125,43 @@ class SettingsRepository @Inject constructor(
     suspend fun setEveningCheckInTime(value: String) = dataStore.edit { it[Keys.eveningCheckInTime] = value }
     suspend fun setEveningCheckInEnabled(value: Boolean) =
         dataStore.edit { it[Keys.eveningCheckInEnabled] = value }
+    suspend fun setWeeklyCheckInDay(value: String) {
+        require(java.time.DayOfWeek.entries.any { it.name == value })
+        dataStore.edit { it[Keys.weeklyCheckInDay] = value }
+    }
+    suspend fun setWeeklyCheckInTime(value: String) = dataStore.edit { it[Keys.weeklyCheckInTime] = value }
+    suspend fun setWeeklyCheckInEnabled(value: Boolean) =
+        dataStore.edit { it[Keys.weeklyCheckInEnabled] = value }
+    suspend fun setNudgesEnabled(value: Boolean) = dataStore.edit { it[Keys.nudgesEnabled] = value }
     suspend fun setQuietHoursStart(value: String?) = updateNullableString(Keys.quietHoursStart, value)
     suspend fun setQuietHoursEnd(value: String?) = updateNullableString(Keys.quietHoursEnd, value)
     suspend fun setThemeMode(value: ThemeMode) = dataStore.edit { it[Keys.themeMode] = value.name }
     suspend fun setUseDynamicColor(value: Boolean) = dataStore.edit { it[Keys.useDynamicColor] = value }
-    suspend fun setIconShape(value: String) = dataStore.edit { it[Keys.iconShape] = value }
-    suspend fun setFontPreset(value: String) = dataStore.edit { it[Keys.fontPreset] = value }
+    suspend fun setIconShape(value: IconShape) = dataStore.edit { it[Keys.iconShape] = value.name }
+    suspend fun setFontPreset(value: FontPreset) = dataStore.edit { it[Keys.fontPreset] = value.name }
+    suspend fun setLayoutDensity(value: LayoutDensityPreset) =
+        dataStore.edit { it[Keys.layoutDensity] = value.name }
+    suspend fun setAccentColorIndex(value: Int) {
+        require(value in 0 until ACCENT_COLOR_COUNT)
+        dataStore.edit { it[Keys.accentColorIndex] = value }
+    }
     suspend fun setIconPackPackage(value: String?) = updateNullableString(Keys.iconPackPackage, value)
-    suspend fun setOnboardingCompleted(value: Boolean) = dataStore.edit { it[Keys.onboardingCompleted] = value }
+    suspend fun setLeftSwipeTarget(value: SwipeAppTarget?) =
+        updateNullableString(Keys.leftSwipeTarget, value?.toPreferenceValue())
+    suspend fun setRightSwipeTarget(value: SwipeAppTarget?) =
+        updateNullableString(Keys.rightSwipeTarget, value?.toPreferenceValue())
+    override suspend fun setOnboardingCompleted(value: Boolean) {
+        dataStore.edit { it[Keys.onboardingCompleted] = value }
+    }
     suspend fun setAssumedMinutesPerOpen(value: Int) =
         dataStore.edit { it[Keys.assumedMinutesPerOpen] = value }
+    suspend fun setFocusScoreEnabled(value: Boolean) =
+        dataStore.edit { it[Keys.focusScoreEnabled] = value }
     suspend fun setNotificationPermissionRequested(value: Boolean) =
         dataStore.edit { it[Keys.notificationPermissionRequested] = value }
+    override suspend fun markNotificationPermissionRequested() {
+        setNotificationPermissionRequested(true)
+    }
     suspend fun markFocusModesSeeded() = dataStore.edit { it[Keys.focusModesSeeded] = true }
     suspend fun setManualModeOverride(modeId: String?, until: LocalDateTime?) = dataStore.edit {
         it[Keys.manualModeOverrideSet] = true
@@ -125,6 +184,16 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    private fun SwipeAppTarget.toPreferenceValue(): String =
+        "$packageName|$className|$userSerial"
+
+    private fun String.toSwipeAppTarget(): SwipeAppTarget? {
+        val parts = split('|')
+        if (parts.size != 3 || parts[0].isBlank() || parts[1].isBlank()) return null
+        val serial = parts[2].toLongOrNull() ?: return null
+        return SwipeAppTarget(parts[0], parts[1], serial)
+    }
+
     private object Keys {
         val drawerMode = stringPreferencesKey("drawer_mode")
         val frictionLevel = stringPreferencesKey("friction_level")
@@ -135,15 +204,24 @@ class SettingsRepository @Inject constructor(
         val morningCheckInEnabled = booleanPreferencesKey("morning_check_in_enabled")
         val eveningCheckInTime = stringPreferencesKey("evening_check_in_time")
         val eveningCheckInEnabled = booleanPreferencesKey("evening_check_in_enabled")
+        val weeklyCheckInDay = stringPreferencesKey("weekly_check_in_day")
+        val weeklyCheckInTime = stringPreferencesKey("weekly_check_in_time")
+        val weeklyCheckInEnabled = booleanPreferencesKey("weekly_check_in_enabled")
+        val nudgesEnabled = booleanPreferencesKey("nudges_enabled")
         val quietHoursStart = stringPreferencesKey("quiet_hours_start")
         val quietHoursEnd = stringPreferencesKey("quiet_hours_end")
         val themeMode = stringPreferencesKey("theme_mode")
         val useDynamicColor = booleanPreferencesKey("use_dynamic_color")
         val iconShape = stringPreferencesKey("icon_shape")
         val fontPreset = stringPreferencesKey("font_preset")
+        val layoutDensity = stringPreferencesKey("layout_density")
+        val accentColorIndex = intPreferencesKey("accent_color_index")
         val iconPackPackage = stringPreferencesKey("icon_pack_package")
+        val leftSwipeTarget = stringPreferencesKey("left_swipe_target")
+        val rightSwipeTarget = stringPreferencesKey("right_swipe_target")
         val onboardingCompleted = booleanPreferencesKey("onboarding_completed")
         val assumedMinutesPerOpen = intPreferencesKey("assumed_minutes_per_open")
+        val focusScoreEnabled = booleanPreferencesKey("focus_score_enabled")
         val notificationPermissionRequested = booleanPreferencesKey("notification_permission_requested")
         val focusModesSeeded = booleanPreferencesKey("focus_modes_seeded")
         val manualModeOverrideSet = booleanPreferencesKey("manual_mode_override_set")
@@ -152,8 +230,7 @@ class SettingsRepository @Inject constructor(
     }
 
     private companion object {
-        const val DEFAULT_ICON_SHAPE = "circle"
-        const val DEFAULT_FONT_PRESET = "system"
+        const val ACCENT_COLOR_COUNT = 8
         const val MAX_DAILY_LIMIT_MINUTES = 720
         const val NONE_MODE_ID = "__none__"
     }

@@ -1,5 +1,12 @@
 package com.savatech.chimelauncher.feature.goals
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -19,14 +27,18 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.savatech.chimelauncher.R
@@ -37,12 +49,61 @@ import java.time.format.DateTimeFormatter
 fun GoalDetailScreen(
     onEditGoal: (String) -> Unit,
     onStartFocusSession: (String, String?) -> Unit,
+    focusTaskId: String? = null,
     viewModel: GoalDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val permissionRequested by viewModel.notificationPermissionRequested.collectAsStateWithLifecycle()
     var taskBeingEdited by rememberSaveable { mutableStateOf<String?>(null) }
     var showTaskSheet by rememberSaveable { mutableStateOf(false) }
     var showDeleteGoalDialog by rememberSaveable { mutableStateOf(false) }
+    var reminderPermissionDenied by rememberSaveable { mutableStateOf(false) }
+    var pendingTaskSave by remember { mutableStateOf<TaskSaveRequest?>(null) }
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        pendingTaskSave?.let { request ->
+            viewModel.saveTask(
+                request.taskId,
+                request.title,
+                request.recurrence,
+                request.daysMask,
+                request.reminderTime,
+                request.todayValue,
+            )
+            if (!granted) reminderPermissionDenied = true
+        }
+        pendingTaskSave = null
+    }
+
+    fun saveTask(
+        taskId: String?,
+        title: String,
+        recurrence: com.savatech.chimelauncher.domain.model.Recurrence,
+        daysMask: Int,
+        reminderTime: String?,
+        todayValue: String,
+    ) {
+        val request = TaskSaveRequest(taskId, title, recurrence, daysMask, reminderTime, todayValue)
+        val permissionGranted = Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        when {
+            reminderTime == null || permissionGranted -> viewModel.saveTask(
+                taskId, title, recurrence, daysMask, reminderTime, todayValue,
+            )
+            !permissionRequested -> {
+                pendingTaskSave = request
+                viewModel.markNotificationPermissionRequested()
+                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            else -> {
+                reminderPermissionDenied = true
+                viewModel.saveTask(taskId, title, recurrence, daysMask, reminderTime, todayValue)
+            }
+        }
+    }
 
     Scaffold { padding ->
         when {
@@ -56,9 +117,15 @@ fun GoalDetailScreen(
             )
             else -> {
                 val goal = state.goal!!
+                val listState = rememberLazyListState()
+                LaunchedEffect(state.tasks, focusTaskId) {
+                    val taskIndex = state.tasks.indexOfFirst { it.task.id == focusTaskId }
+                    if (taskIndex >= 0) listState.animateScrollToItem(taskIndex + 1)
+                }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
+                    state = listState,
                 ) {
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -197,7 +264,7 @@ fun GoalDetailScreen(
             initialValue = state.tasks.firstOrNull { it.task.id == taskBeingEdited }?.todayValue.orEmpty(),
             onDismiss = { showTaskSheet = false },
             onSave = { title, recurrence, daysMask, reminderTime, todayValue ->
-                viewModel.saveTask(taskBeingEdited, title, recurrence, daysMask, reminderTime, todayValue)
+                saveTask(taskBeingEdited, title, recurrence, daysMask, reminderTime, todayValue)
                 showTaskSheet = false
             },
         )
@@ -235,7 +302,38 @@ fun GoalDetailScreen(
             },
         )
     }
+
+    if (reminderPermissionDenied) {
+        AlertDialog(
+            onDismissRequest = { reminderPermissionDenied = false },
+            title = { Text(stringResource(R.string.notification_permission_denied)) },
+            text = { Text(stringResource(R.string.task_reminder_permission_help)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    reminderPermissionDenied = false
+                    context.startActivity(
+                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                    )
+                }) { Text(stringResource(R.string.open_notification_settings)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { reminderPermissionDenied = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
 }
+
+private data class TaskSaveRequest(
+    val taskId: String?,
+    val title: String,
+    val recurrence: com.savatech.chimelauncher.domain.model.Recurrence,
+    val daysMask: Int,
+    val reminderTime: String?,
+    val todayValue: String,
+)
 
 private fun GoalDetailFailure.messageResource(): Int = when (this) {
     GoalDetailFailure.NOT_FOUND -> R.string.goal_not_found

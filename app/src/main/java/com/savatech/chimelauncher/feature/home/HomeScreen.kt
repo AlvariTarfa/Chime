@@ -2,6 +2,7 @@ package com.savatech.chimelauncher.feature.home
 
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.savatech.chimelauncher.core.theme.LocalLayoutMetrics
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.savatech.chimelauncher.R
@@ -65,6 +67,7 @@ fun HomeScreen(
     focusModeViewModel: FocusModeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val layout = LocalLayoutMetrics.current
     val focusState by focusModeViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -132,11 +135,28 @@ fun HomeScreen(
                             drawerOpened = false
                         },
                     )
+                }
+                .pointerInput(uiState.leftSwipeApp, uiState.rightSwipeApp) {
+                    var dragDistance = 0f
+                    detectHorizontalDragGestures(
+                        onHorizontalDrag = { _, dragAmount -> dragDistance += dragAmount },
+                        onDragEnd = {
+                            when {
+                                dragDistance < -80.dp.toPx() -> uiState.leftSwipeApp?.let(::launchApp)
+                                dragDistance > 80.dp.toPx() -> uiState.rightSwipeApp?.let(::launchApp)
+                            }
+                            dragDistance = 0f
+                        },
+                        onDragCancel = { dragDistance = 0f },
+                    )
                 },
         ) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxSize().padding(
+                    horizontal = layout.horizontalPadding.dp,
+                    vertical = layout.verticalPadding.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(layout.itemSpacing.dp),
             ) {
                 FocusQuickToggle(
                     onManageModes = onManageFocusModes,
@@ -144,7 +164,7 @@ fun HomeScreen(
                 )
                 Column(
                     modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(layout.itemSpacing.dp + 2.dp),
                 ) {
                     ScrimCard {
                         Column(
@@ -247,6 +267,8 @@ fun HomeScreen(
                                         app = app,
                                         showIcon = uiState.drawerMode != DrawerMode.TEXT,
                                         iconCache = viewModel.iconCache,
+                                        iconShape = uiState.iconShape,
+                                        iconPackPackage = uiState.iconPackPackage,
                                         onClick = { launchApp(app) },
                                         onLongClick = { selectedApp = app },
                                     )
@@ -302,6 +324,8 @@ fun HomeScreen(
                 app = app,
                 config = uiState.configs[app.packageName],
                 iconCache = iconCache,
+                iconShape = uiState.iconShape,
+                iconPackPackage = uiState.iconPackPackage,
                 onDismiss = { selectedApp = null },
                 onPin = { pinned -> setPinned(app, pinned) },
                 onHide = {

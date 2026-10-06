@@ -76,6 +76,16 @@ class InterceptViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            performAction {
+                interceptRepository.logEvent(
+                    packageName = packageName,
+                    outcome = InterceptOutcome.SHOWN,
+                    reason = reason,
+                )
+                true
+            }
+        }
+        viewModelScope.launch {
             val today = LocalDate.now(clock)
             val priority = goalRepository.observeDailyPriorities(today).first()
                 .sortedBy { it.position }

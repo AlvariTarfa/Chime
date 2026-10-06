@@ -6,6 +6,7 @@ import androidx.room.Room
 import com.savatech.chimelauncher.data.db.AppDatabase
 import com.savatech.chimelauncher.data.db.dao.AppConfigDao
 import com.savatech.chimelauncher.data.db.dao.AppGrantDao
+import com.savatech.chimelauncher.data.db.dao.CheckInDao
 import com.savatech.chimelauncher.data.db.dao.DailyPriorityDao
 import com.savatech.chimelauncher.data.db.dao.GoalDao
 import com.savatech.chimelauncher.data.db.dao.InterceptEventDao
@@ -59,6 +60,9 @@ object DatabaseModule {
 
     @Provides
     fun provideFocusSessionDao(database: AppDatabase): FocusSessionDao = database.focusSessionDao()
+
+    @Provides
+    fun provideCheckInDao(database: AppDatabase): CheckInDao = database.checkInDao()
 
     private const val DATABASE_NAME = "chime.db"
 }

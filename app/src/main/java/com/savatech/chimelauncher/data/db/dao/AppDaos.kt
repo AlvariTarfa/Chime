@@ -185,6 +185,12 @@ interface InterceptEventDao {
     suspend fun getById(id: Long): InterceptEvent?
 
     @Query(
+        "SELECT * FROM intercept_events WHERE timestamp >= :startInclusive " +
+            "AND timestamp < :endExclusive",
+    )
+    suspend fun getBetween(startInclusive: Long, endExclusive: Long): List<InterceptEvent>
+
+    @Query(
         "SELECT COUNT(*) FROM intercept_events WHERE package_name = :packageName " +
             "AND outcome = 'OPENED' AND timestamp >= :startInclusive AND timestamp < :endExclusive",
     )
@@ -249,6 +255,9 @@ interface CheckInDao {
 
     @Query("SELECT * FROM check_ins")
     fun observeAll(): Flow<List<CheckIn>>
+
+    @Query("SELECT * FROM check_ins ORDER BY date DESC, id DESC")
+    fun observeHistory(): Flow<List<CheckIn>>
 }
 
 @Dao

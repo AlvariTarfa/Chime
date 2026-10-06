@@ -21,6 +21,11 @@ fun interface AppConfigSource {
     suspend fun getAllConfigs(): Map<String, AppConfig> = emptyMap()
 }
 
+interface AppClassificationStore {
+    suspend fun getAllConfigs(): Map<String, AppConfig>
+    suspend fun setCategories(categories: Map<String, AppCategory>)
+}
+
 internal data class PinUpdate(
     val packageNames: List<String>?,
     val result: AppConfigResult,
@@ -59,11 +64,22 @@ private const val MAX_DAILY_LIMIT_MINUTES = 720
 class AppConfigRepository @Inject constructor(
     private val database: AppDatabase,
     private val dao: AppConfigDao,
-) : AppConfigSource {
+) : AppConfigSource, AppClassificationStore {
     override suspend fun getConfig(packageName: String): AppConfig? = dao.getById(packageName)
 
     override suspend fun getAllConfigs(): Map<String, AppConfig> =
         dao.getAll().associateBy(AppConfig::packageName)
+
+    override suspend fun setCategories(categories: Map<String, AppCategory>) {
+        database.withTransaction {
+            val existing = dao.getAll().associateBy(AppConfig::packageName)
+            categories.forEach { (packageName, category) ->
+                save(
+                    existing[packageName].orDefault(packageName).copy(category = category.name),
+                )
+            }
+        }
+    }
 
     fun observeAll(): Flow<Map<String, AppConfig>> =
         dao.observeAll().map { configs -> configs.associateBy(AppConfig::packageName) }

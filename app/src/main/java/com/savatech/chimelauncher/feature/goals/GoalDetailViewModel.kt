@@ -14,6 +14,8 @@ import com.savatech.chimelauncher.domain.streak.TaskSpec
 import com.savatech.chimelauncher.domain.streak.StreakResult
 import com.savatech.chimelauncher.domain.streak.compute
 import com.savatech.chimelauncher.domain.usecase.ToggleTaskCompletionUseCase
+import com.savatech.chimelauncher.service.NotificationPermissionStore
+import com.savatech.chimelauncher.service.SchedulerRescheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
 import java.util.UUID
@@ -21,8 +23,10 @@ import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -51,12 +55,24 @@ class GoalDetailViewModel @Inject constructor(
     private val repository: GoalRepository,
     private val toggleTaskCompletion: ToggleTaskCompletionUseCase,
     savedStateHandle: SavedStateHandle,
+    private val schedulerFacade: SchedulerRescheduler,
+    private val notificationPermissionStore: NotificationPermissionStore,
 ) : ViewModel() {
     private val goalId: String = checkNotNull(savedStateHandle["goalId"])
     private val _uiState = MutableStateFlow(GoalDetailUiState())
     val uiState: StateFlow<GoalDetailUiState> = _uiState.asStateFlow()
+    val notificationPermissionRequested: StateFlow<Boolean> =
+        notificationPermissionStore.notificationPermissionRequested.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            false,
+        )
     private val today = LocalDate.now()
     private var goalDeleted = false
+
+    fun markNotificationPermissionRequested() {
+        viewModelScope.launch { notificationPermissionStore.markNotificationPermissionRequested() }
+    }
 
     init {
         viewModelScope.launch {
@@ -141,6 +157,7 @@ class GoalDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(failure = GoalDetailFailure.UPDATE_FAILED) }
                     return@launch
                 }
+                schedulerFacade.rescheduleAll()
                 todayValue.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0.0 }?.let { value ->
                     val existingLog = repository.getTaskLog(task.id, today)
                     repository.upsertTaskLog(
@@ -169,7 +186,10 @@ class GoalDetailViewModel @Inject constructor(
             try {
                 if (!repository.deleteTask(taskId)) _uiState.update {
                     it.copy(failure = GoalDetailFailure.DELETE_FAILED, deletingTaskId = null)
-                } else _uiState.update { it.copy(deletingTaskId = null) }
+                } else {
+                    schedulerFacade.rescheduleAll()
+                    _uiState.update { it.copy(deletingTaskId = null) }
+                }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
@@ -187,6 +207,7 @@ class GoalDetailViewModel @Inject constructor(
                 if (goal == null || !repository.updateGoal(goal.copy(status = status))) {
                     _uiState.update { it.copy(failure = GoalDetailFailure.UPDATE_FAILED) }
                 } else {
+                    schedulerFacade.rescheduleAll()
                     _uiState.update { it.copy(goal = goal.copy(status = status)) }
                 }
             } catch (cancelled: CancellationException) {
@@ -205,6 +226,7 @@ class GoalDetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 if (repository.deleteGoal(goalId)) {
+                    schedulerFacade.rescheduleAll()
                     goalDeleted = true
                     _uiState.update { it.copy(goal = null, showDeleteGoalConfirmation = false) }
                 } else {

@@ -82,6 +82,12 @@ class RoomInterceptRepositoryTest {
         override suspend fun update(interceptEvent: InterceptEvent): Int = 0
         override suspend fun delete(interceptEvent: InterceptEvent): Int = 0
         override suspend fun getById(id: Long): InterceptEvent? = events.firstOrNull { it.id == id }
+        override suspend fun getBetween(
+            startInclusive: Long,
+            endExclusive: Long,
+        ): List<InterceptEvent> = events.filter {
+            it.timestamp >= startInclusive && it.timestamp < endExclusive
+        }
         override suspend fun countOpenedBetween(
             packageName: String,
             startInclusive: Long,

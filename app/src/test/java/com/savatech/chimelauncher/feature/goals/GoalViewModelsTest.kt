@@ -41,6 +41,7 @@ class GoalViewModelsTest {
         val viewModel = GoalEditViewModel(
             repository,
             SavedStateHandle(mapOf("goalId" to "new")),
+            TestSchedulerRescheduler,
         )
         val categories = listOf("Health", "Learning", "Career", "Finance", "Relationships", "Personal", "Other")
 
@@ -81,6 +82,8 @@ class GoalViewModelsTest {
             repository,
             ToggleTaskCompletionUseCase(repository),
             SavedStateHandle(mapOf("goalId" to goal.id)),
+            TestSchedulerRescheduler,
+            TestNotificationPermissionStore,
         )
 
         viewModel.uiState.test {

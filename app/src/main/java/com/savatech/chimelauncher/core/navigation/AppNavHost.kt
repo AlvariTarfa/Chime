@@ -6,6 +6,15 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.savatech.chimelauncher.feature.drawer.DrawerScreen
 import com.savatech.chimelauncher.feature.drawer.HiddenAppsScreen
 import com.savatech.chimelauncher.feature.goals.GoalsScreen
@@ -17,13 +26,43 @@ import com.savatech.chimelauncher.feature.intercept.InterceptScreen
 import com.savatech.chimelauncher.feature.focus.FocusModesScreen
 import com.savatech.chimelauncher.feature.focus.FocusSessionScreen
 import com.savatech.chimelauncher.feature.settings.SettingsScreen
+import com.savatech.chimelauncher.feature.checkin.CheckInScreen
+import com.savatech.chimelauncher.feature.checkin.CheckInHistoryScreen
+import com.savatech.chimelauncher.feature.insights.InsightsScreen
+import com.savatech.chimelauncher.feature.onboarding.OnboardingScreen
+import com.savatech.chimelauncher.feature.onboarding.OnboardingViewModel
 
 @Composable
 fun AppNavHost(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = Routes.Home,
+        startDestination = Routes.Entry,
     ) {
+        composable(Routes.Entry) { entry ->
+            val viewModel: OnboardingViewModel = hiltViewModel(entry)
+            val state by viewModel.uiState.collectAsStateWithLifecycle()
+            LaunchedEffect(state.onboardingCompleted) {
+                state.onboardingCompleted?.let { completed ->
+                    navController.navigate(if (completed) Routes.Home else Routes.Onboarding) {
+                        popUpTo(Routes.Entry) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            }
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        composable(Routes.Onboarding) {
+            OnboardingScreen(
+                onGoHome = {
+                    navController.navigate(Routes.Home) {
+                        popUpTo(Routes.Home) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
         composable(Routes.Home) {
             HomeScreen(
                 onOpenDrawer = { navController.navigate(Routes.Drawer) },
@@ -90,7 +129,39 @@ fun AppNavHost(navController: NavHostController) {
             PriorityScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.Settings) {
-            SettingsScreen(onOpenHiddenApps = { navController.navigate(Routes.HiddenApps) })
+            SettingsScreen(
+                onOpenHiddenApps = { navController.navigate(Routes.HiddenApps) },
+                onOpenCheckInHistory = { navController.navigate(Routes.CheckInHistory) },
+                onOpenInsights = { navController.navigate(Routes.Insights) },
+                onRunSetupAgain = { navController.navigate(Routes.Onboarding) },
+            )
+        }
+        composable(Routes.Insights) {
+            InsightsScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.CheckIn) { entry ->
+            CheckInScreen(
+                type = checkNotNull(entry.arguments?.getString("type")),
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(Routes.CheckInHistory) {
+            CheckInHistoryScreen(onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = Routes.TaskDetail,
+            arguments = listOf(
+                navArgument("goalId") { type = NavType.StringType },
+                navArgument("taskId") { type = NavType.StringType },
+            ),
+        ) { entry ->
+            GoalDetailScreen(
+                onEditGoal = { goalId -> navController.navigate(Routes.goalEdit(goalId)) },
+                onStartFocusSession = { goalId, taskId ->
+                    navController.navigate(Routes.focusSession(goalId, taskId))
+                },
+                focusTaskId = entry.arguments?.getString("taskId"),
+            )
         }
         composable(Routes.HiddenApps) { HiddenAppsScreen() }
         composable(Routes.FocusModes) {

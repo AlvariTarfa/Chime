@@ -11,6 +11,8 @@ import com.savatech.chimelauncher.data.apps.IconCache
 import com.savatech.chimelauncher.data.db.entities.AppConfig
 import com.savatech.chimelauncher.data.goals.GoalRepository
 import com.savatech.chimelauncher.data.settings.DrawerMode
+import com.savatech.chimelauncher.data.settings.IconShape
+import com.savatech.chimelauncher.data.settings.SwipeAppTarget
 import com.savatech.chimelauncher.data.settings.SettingsRepository
 import com.savatech.chimelauncher.domain.model.GoalStatus
 import com.savatech.chimelauncher.domain.usecase.GoalOverview
@@ -64,6 +66,10 @@ data class HomeUiState(
     val pinnedApps: List<AppInfo> = emptyList(),
     val configs: Map<String, AppConfig> = emptyMap(),
     val drawerMode: DrawerMode = DrawerMode.TEXT,
+    val iconShape: IconShape = IconShape.CIRCLE,
+    val iconPackPackage: String? = null,
+    val leftSwipeApp: AppInfo? = null,
+    val rightSwipeApp: AppInfo? = null,
     val activeFocusModeName: String? = null,
     val taskUpdateFailed: Boolean = false,
 )
@@ -72,6 +78,18 @@ data class HomeAppsState(
     val pinnedApps: List<AppInfo> = emptyList(),
     val configs: Map<String, AppConfig> = emptyMap(),
     val drawerMode: DrawerMode = DrawerMode.TEXT,
+    val iconShape: IconShape = IconShape.CIRCLE,
+    val iconPackPackage: String? = null,
+    val leftSwipeApp: AppInfo? = null,
+    val rightSwipeApp: AppInfo? = null,
+)
+
+private data class HomeAppPreferences(
+    val drawerMode: DrawerMode,
+    val iconShape: IconShape,
+    val iconPackPackage: String?,
+    val leftSwipeTarget: SwipeAppTarget?,
+    val rightSwipeTarget: SwipeAppTarget?,
 )
 
 interface HomeAppsSource {
@@ -93,18 +111,43 @@ class DefaultHomeAppsSource @Inject constructor(
     settingsRepository: SettingsRepository,
     override val iconCache: IconCache,
 ) : HomeAppsSource {
+    private val preferences = combine(
+        settingsRepository.drawerMode,
+        settingsRepository.iconShape,
+        settingsRepository.iconPackPackage,
+        settingsRepository.leftSwipeTarget,
+        settingsRepository.rightSwipeTarget,
+    ) { drawerMode, shape, pack, leftTarget, rightTarget ->
+        HomeAppPreferences(drawerMode, shape, pack, leftTarget, rightTarget)
+    }
+
     override val state: Flow<HomeAppsState> = combine(
         visibleApps(),
         appConfigRepository.observeAll(),
-        settingsRepository.drawerMode,
-    ) { apps, configs, drawerMode ->
+        preferences,
+    ) { apps, configs, preference ->
         val appsByPackage = apps.associateBy(AppInfo::packageName)
         val pinnedApps = configs.values
             .filter(AppConfig::pinned)
             .sortedBy(AppConfig::pinOrder)
             .mapNotNull { appsByPackage[it.packageName] }
             .take(4)
-        HomeAppsState(pinnedApps, configs, drawerMode)
+        fun appFor(target: SwipeAppTarget?): AppInfo? = target?.let {
+            apps.firstOrNull { app ->
+                app.packageName == it.packageName &&
+                    app.className == it.className &&
+                    app.userSerial == it.userSerial
+            }
+        }
+        HomeAppsState(
+            pinnedApps = pinnedApps,
+            configs = configs,
+            drawerMode = preference.drawerMode,
+            iconShape = preference.iconShape,
+            iconPackPackage = preference.iconPackPackage,
+            leftSwipeApp = appFor(preference.leftSwipeTarget),
+            rightSwipeApp = appFor(preference.rightSwipeTarget),
+        )
     }
 
     private val configRepository = appConfigRepository
@@ -193,6 +236,10 @@ class HomeViewModel @Inject constructor(
             pinnedApps = apps.pinnedApps,
             configs = apps.configs,
             drawerMode = apps.drawerMode,
+            iconShape = apps.iconShape,
+            iconPackPackage = apps.iconPackPackage,
+            leftSwipeApp = apps.leftSwipeApp,
+            rightSwipeApp = apps.rightSwipeApp,
             taskUpdateFailed = updateFailed,
         )
     }.stateIn(

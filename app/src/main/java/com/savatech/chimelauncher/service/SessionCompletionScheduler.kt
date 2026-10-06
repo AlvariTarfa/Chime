@@ -2,8 +2,6 @@ package com.savatech.chimelauncher.service
 
 import android.Manifest
 import android.app.AlarmManager
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -13,6 +11,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.savatech.chimelauncher.service.notify.NotificationChannels
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -47,22 +46,11 @@ class SessionCompletionScheduler @Inject constructor(
     )
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = requireNotNull(context.getSystemService(NotificationManager::class.java)) {
-                "NotificationManager is unavailable."
-            }
-            manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    context.getString(com.savatech.chimelauncher.R.string.focus_session_channel),
-                    NotificationManager.IMPORTANCE_DEFAULT,
-                ),
-            )
-        }
+        NotificationChannels.create(context)
     }
 
     companion object {
-        const val CHANNEL_ID = "focus_session_complete"
+        const val CHANNEL_ID = NotificationChannels.SESSION_END
     }
 }
 

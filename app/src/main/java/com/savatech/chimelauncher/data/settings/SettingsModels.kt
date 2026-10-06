@@ -33,3 +33,50 @@ enum class ThemeMode {
             entries.firstOrNull { it.name == value } ?: SYSTEM
     }
 }
+
+enum class IconShape {
+    CIRCLE,
+    SQUIRCLE,
+    ROUNDED_SQUARE,
+    NONE;
+
+    companion object {
+        fun fromStorage(value: String): IconShape =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: CIRCLE
+    }
+}
+
+enum class FontPreset {
+    DEFAULT,
+    SANS_SERIF,
+    SERIF,
+    MONOSPACE,
+    CURSIVE;
+
+    companion object {
+        fun fromStorage(value: String): FontPreset = when (value.lowercase()) {
+            "sans_serif", "sansserif" -> SANS_SERIF
+            "serif" -> SERIF
+            "monospace" -> MONOSPACE
+            "cursive" -> CURSIVE
+            else -> DEFAULT
+        }
+    }
+}
+
+enum class LayoutDensityPreset {
+    COMPACT,
+    COMFORTABLE,
+    SPACIOUS;
+
+    companion object {
+        fun fromStorage(value: String): LayoutDensityPreset =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: COMFORTABLE
+    }
+}
+
+data class SwipeAppTarget(
+    val packageName: String,
+    val className: String,
+    val userSerial: Long,
+)

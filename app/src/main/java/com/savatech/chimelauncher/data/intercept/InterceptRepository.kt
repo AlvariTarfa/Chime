@@ -24,6 +24,7 @@ interface InterceptRepository {
         reason: String? = null,
     )
     suspend fun createGrant(packageName: String, minutes: Int): AppGrant
+    suspend fun eventsBetween(startInclusive: Long, endExclusive: Long): List<InterceptEvent>
 }
 
 @Module
@@ -40,6 +41,11 @@ class RoomInterceptRepository @Inject constructor(
     private val eventDao: InterceptEventDao,
     private val clock: Clock,
 ) : InterceptRepository {
+    override suspend fun eventsBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<InterceptEvent> = eventDao.getBetween(startInclusive, endExclusive)
+
     override suspend fun hasActiveGrant(packageName: String): Boolean {
         val now = clock.millis()
         grantDao.deleteExpired(now)

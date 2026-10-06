@@ -11,6 +11,8 @@ import com.savatech.chimelauncher.data.apps.IconCache
 import com.savatech.chimelauncher.data.apps.AppRepository
 import com.savatech.chimelauncher.data.db.entities.AppConfig
 import com.savatech.chimelauncher.data.settings.DrawerMode
+import com.savatech.chimelauncher.data.settings.IconShape
+import com.savatech.chimelauncher.data.settings.LayoutDensityPreset
 import com.savatech.chimelauncher.data.settings.SettingsRepository
 import com.savatech.chimelauncher.domain.filterApps
 import com.savatech.chimelauncher.domain.model.AppCategory
@@ -28,6 +30,9 @@ data class DrawerUiState(
     val apps: List<AppInfo> = emptyList(),
     val configs: Map<String, AppConfig> = emptyMap(),
     val drawerMode: DrawerMode = DrawerMode.TEXT,
+    val iconShape: IconShape = IconShape.CIRCLE,
+    val iconPackPackage: String? = null,
+    val layoutDensity: LayoutDensityPreset = LayoutDensityPreset.COMFORTABLE,
     val isLoading: Boolean = true,
 )
 
@@ -42,7 +47,7 @@ class DrawerViewModel @Inject constructor(
 ) : ViewModel() {
     private val query = MutableStateFlow("")
 
-    val uiState: StateFlow<DrawerUiState> = combine(
+    private val appState = combine(
         query,
         visibleApps(),
         repository.isLoaded,
@@ -56,6 +61,15 @@ class DrawerViewModel @Inject constructor(
             drawerMode = drawerMode,
             isLoading = !isLoaded,
         )
+    }
+
+    val uiState: StateFlow<DrawerUiState> = combine(
+        appState,
+        settingsRepository.iconShape,
+        settingsRepository.iconPackPackage,
+        settingsRepository.layoutDensity,
+    ) { state, iconShape, iconPack, density ->
+        state.copy(iconShape = iconShape, iconPackPackage = iconPack, layoutDensity = density)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DrawerUiState())
 
     fun updateQuery(value: String) {

@@ -22,23 +22,29 @@ fun interface UsageAccess {
     fun isGranted(): Boolean
 }
 
+interface OnboardingUsageAccess {
+    val hasPermission: StateFlow<Boolean>
+    fun refresh()
+    fun settingsIntent(): Intent
+}
+
 @Singleton
 class UsagePermission @Inject constructor(
     @param:ApplicationContext private val context: Context,
-) : UsageAccess {
+) : UsageAccess, OnboardingUsageAccess {
     private val appOpsManager =
         context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
     private val permissionState = MutableStateFlow(checkPermission())
 
-    val hasPermission: StateFlow<Boolean> = permissionState
+    override val hasPermission: StateFlow<Boolean> = permissionState
 
-    fun refresh() {
+    override fun refresh() {
         permissionState.value = checkPermission()
     }
 
     override fun isGranted(): Boolean = checkPermission()
 
-    fun settingsIntent(): Intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+    override fun settingsIntent(): Intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
         data = Uri.parse("package:${context.packageName}")
     }
 
@@ -75,4 +81,8 @@ abstract class UsagePermissionModule {
     @Binds
     @Singleton
     abstract fun bindUsageAccess(permission: UsagePermission): UsageAccess
+
+    @Binds
+    @Singleton
+    abstract fun bindOnboardingUsageAccess(permission: UsagePermission): OnboardingUsageAccess
 }

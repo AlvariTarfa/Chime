@@ -38,6 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.savatech.chimelauncher.R
 import com.savatech.chimelauncher.data.apps.AppInfo
 import com.savatech.chimelauncher.data.apps.IconCache
+import com.savatech.chimelauncher.data.settings.IconShape
 import com.savatech.chimelauncher.data.db.entities.AppConfig
 import com.savatech.chimelauncher.domain.model.AppCategory
 import kotlinx.coroutines.launch
@@ -48,6 +49,8 @@ fun AppActionsSheet(
     app: AppInfo,
     config: AppConfig?,
     iconCache: IconCache,
+    iconShape: IconShape = IconShape.CIRCLE,
+    iconPackPackage: String? = null,
     onDismiss: () -> Unit,
     onPin: (Boolean) -> Unit,
     onHide: () -> Unit,
@@ -79,7 +82,7 @@ fun AppActionsSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                AppIcon(app, iconCache, 40.dp)
+                AppIcon(app, iconCache, 40.dp, iconShape, iconPackPackage)
                 Text(app.label, style = MaterialTheme.typography.titleMedium)
             }
             TextButton(onClick = { onPin(!isPinned); onDismiss() }) {
