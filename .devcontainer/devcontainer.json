@@ -7,16 +7,6 @@
       "installMaven": false
     }
   },
-  "containerEnv": {
-    "ANDROID_HOME": "${containerEnv:HOME}/android-sdk",
-    "ANDROID_SDK_ROOT": "${containerEnv:HOME}/android-sdk",
-    "PATH": "${containerEnv:HOME}/android-sdk/cmdline-tools/latest/bin:${containerEnv:HOME}/android-sdk/platform-tools:${containerEnv:PATH}"
-  },
-  "remoteEnv": {
-    "ANDROID_HOME": "${containerEnv:ANDROID_HOME}",
-    "ANDROID_SDK_ROOT": "${containerEnv:ANDROID_SDK_ROOT}",
-    "PATH": "${containerEnv:ANDROID_HOME}/cmdline-tools/latest/bin:${containerEnv:ANDROID_HOME}/platform-tools:${containerEnv:PATH}"
-  },
   "onCreateCommand": "bash .devcontainer/setup.sh",
   "customizations": {
     "vscode": {
