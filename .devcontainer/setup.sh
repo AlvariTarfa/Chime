@@ -81,15 +81,6 @@ sdkmanager \
   "platforms;android-$platform_api" \
   "build-tools;$platform_api.0.0"
 
-if [[ ! -f "$HOME/.sdkman/bin/sdkman-init.sh" ]]; then
-  curl --fail --location --silent --show-error "https://get.sdkman.io" | bash
-fi
-
-# shellcheck disable=SC1091
-source "$HOME/.sdkman/bin/sdkman-init.sh"
-if [[ ! -x "$HOME/.sdkman/candidates/gradle/current/bin/gradle" ]]; then
-  sdk install gradle
-fi
 
 printf 'Installed Android platform API %s and build-tools %s.0.0\n' \
   "$platform_api" "$platform_api"
