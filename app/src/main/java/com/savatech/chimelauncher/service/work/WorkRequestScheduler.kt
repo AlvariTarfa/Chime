@@ -13,11 +13,14 @@ import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 interface WorkRequestScheduler {
     fun enqueueUnique(name: String, workerName: String, delayMillis: Long, input: Map<String, String>)
     fun cancelUnique(name: String)
     fun cancelTaskReminders()
+    suspend fun cancelAll() = cancelTaskReminders()
 }
 
 @Singleton
@@ -34,6 +37,7 @@ class WorkManagerRequestScheduler @Inject constructor(
             CheckInWorker.WORKER_NAME -> CheckInWorker::class.java
             TaskReminderWorker.WORKER_NAME -> TaskReminderWorker::class.java
             NudgeWorker.WORKER_NAME -> NudgeWorker::class.java
+            DigestWorker.WORKER_NAME -> DigestWorker::class.java
             else -> error("Unknown worker name: $workerName")
         }
         val request = OneTimeWorkRequest.Builder(workerClass)
@@ -52,6 +56,12 @@ class WorkManagerRequestScheduler @Inject constructor(
 
     override fun cancelTaskReminders() {
         WorkManager.getInstance(context).cancelAllWorkByTag(TASK_REMINDER_TAG)
+    }
+
+    override suspend fun cancelAll() {
+        withContext(Dispatchers.IO) {
+            WorkManager.getInstance(context).cancelAllWork().result.get()
+        }
     }
 
     companion object {

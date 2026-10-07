@@ -26,9 +26,15 @@ import com.savatech.chimelauncher.feature.intercept.InterceptScreen
 import com.savatech.chimelauncher.feature.focus.FocusModesScreen
 import com.savatech.chimelauncher.feature.focus.FocusSessionScreen
 import com.savatech.chimelauncher.feature.settings.SettingsScreen
+import com.savatech.chimelauncher.feature.settings.AccessibilityDisclosureScreen
+import com.savatech.chimelauncher.feature.settings.DataManagementScreen
 import com.savatech.chimelauncher.feature.checkin.CheckInScreen
 import com.savatech.chimelauncher.feature.checkin.CheckInHistoryScreen
 import com.savatech.chimelauncher.feature.insights.InsightsScreen
+import com.savatech.chimelauncher.feature.digest.DigestAllowListScreen
+import com.savatech.chimelauncher.feature.digest.DigestConsentScreen
+import com.savatech.chimelauncher.feature.digest.DigestItemsScreen
+import com.savatech.chimelauncher.feature.digest.DigestSettingsScreen
 import com.savatech.chimelauncher.feature.onboarding.OnboardingScreen
 import com.savatech.chimelauncher.feature.onboarding.OnboardingViewModel
 
@@ -133,9 +139,40 @@ fun AppNavHost(navController: NavHostController) {
                 onOpenHiddenApps = { navController.navigate(Routes.HiddenApps) },
                 onOpenCheckInHistory = { navController.navigate(Routes.CheckInHistory) },
                 onOpenInsights = { navController.navigate(Routes.Insights) },
+                onOpenDigest = { navController.navigate(Routes.DigestSettings) },
+                onOpenAccessibilityDisclosure = {
+                    navController.navigate(Routes.AccessibilityDisclosure)
+                },
+                onOpenDataManagement = { navController.navigate(Routes.DataManagement) },
                 onRunSetupAgain = { navController.navigate(Routes.Onboarding) },
             )
         }
+        composable(Routes.DataManagement) {
+            DataManagementScreen(
+                onBack = { navController.popBackStack() },
+                onDeleted = {
+                    navController.navigate(Routes.Onboarding) {
+                        popUpTo(Routes.Home) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
+        composable(Routes.AccessibilityDisclosure) {
+            AccessibilityDisclosureScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.DigestSettings) {
+            DigestSettingsScreen(
+                onOpenConsent = { navController.navigate(Routes.DigestConsent) },
+                onOpenAllowList = { navController.navigate(Routes.DigestAllowList) },
+                onOpenItems = { navController.navigate(Routes.DigestItems) },
+            )
+        }
+        composable(Routes.DigestConsent) {
+            DigestConsentScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.DigestAllowList) { DigestAllowListScreen() }
+        composable(Routes.DigestItems) { DigestItemsScreen() }
         composable(Routes.Insights) {
             InsightsScreen(onBack = { navController.popBackStack() })
         }

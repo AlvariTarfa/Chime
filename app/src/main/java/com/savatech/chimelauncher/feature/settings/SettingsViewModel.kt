@@ -20,6 +20,7 @@ import com.savatech.chimelauncher.data.usage.UsagePermission
 import com.savatech.chimelauncher.data.usage.UsageRepository
 import com.savatech.chimelauncher.domain.model.AppCategory
 import com.savatech.chimelauncher.service.SchedulerRescheduler
+import com.savatech.chimelauncher.service.AccessibilityServiceAccess
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.DayOfWeek
 import java.time.Clock
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -40,9 +42,12 @@ class SettingsViewModel @Inject constructor(
     val iconCache: IconCache,
     private val usagePermission: UsagePermission,
     private val usageRepository: UsageRepository,
+    private val accessibilityServiceAccess: AccessibilityServiceAccess,
     private val schedulerFacade: SchedulerRescheduler,
     private val clock: Clock,
 ) : ViewModel() {
+    private val mutableAccessibilityServiceEnabled = MutableStateFlow<Boolean?>(null)
+    val accessibilityServiceEnabled = mutableAccessibilityServiceEnabled.asStateFlow()
     val themeMode = settingsRepository.themeMode.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeMode.SYSTEM,
     )
@@ -250,9 +255,22 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun refreshAccessibilityService() {
+        viewModelScope.launch {
+            try {
+                mutableAccessibilityServiceEnabled.value = accessibilityServiceAccess.isEnabled()
+            } catch (exception: SecurityException) {
+                Log.e(ACCESSIBILITY_TAG, "Could not read accessibility service status.", exception)
+            } catch (exception: IllegalStateException) {
+                Log.e(ACCESSIBILITY_TAG, "Could not read accessibility service status.", exception)
+            }
+        }
+    }
+
     fun usageAccessSettingsIntent() = usagePermission.settingsIntent()
 
     private companion object {
         const val USAGE_DEBUG_TAG = "ChimeUsageDebug"
+        const val ACCESSIBILITY_TAG = "ChimeAccessibility"
     }
 }

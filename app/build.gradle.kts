@@ -9,6 +9,22 @@ plugins {
     alias(libs.plugins.hilt.android)
 }
 
+val signingEnvironment = listOf(
+    "KEYSTORE_PATH",
+    "KEYSTORE_PASSWORD",
+    "KEY_ALIAS",
+    "KEY_PASSWORD",
+).associateWith { providers.environmentVariable(it).orNull }
+val missingSigningEnvironment = signingEnvironment.filterValues { it.isNullOrBlank() }.keys
+val releaseSigningConfigured = missingSigningEnvironment.isEmpty()
+
+if (!releaseSigningConfigured) {
+    logger.warn(
+        "Release signing is not configured; ${missingSigningEnvironment.joinToString()} " +
+            "is missing. Release APK/AAB artifacts will be unsigned.",
+    )
+}
+
 android {
     namespace = "com.savatech.chimelauncher"
     compileSdk = 36
@@ -17,9 +33,34 @@ android {
         applicationId = "com.savatech.chimelauncher"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = providers.gradleProperty("versionCode").get().toInt()
+        versionName = providers.gradleProperty("versionName").get()
 
+    }
+
+    signingConfigs {
+        create("release") {
+            if (releaseSigningConfigured) {
+                storeFile = file(requireNotNull(signingEnvironment["KEYSTORE_PATH"]))
+                storePassword = requireNotNull(signingEnvironment["KEYSTORE_PASSWORD"])
+                keyAlias = requireNotNull(signingEnvironment["KEY_ALIAS"])
+                keyPassword = requireNotNull(signingEnvironment["KEY_PASSWORD"])
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
 
     buildFeatures {

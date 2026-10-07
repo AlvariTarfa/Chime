@@ -3,7 +3,6 @@ package com.savatech.chimelauncher.service.notify
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
 import com.savatech.chimelauncher.R
 
 object NotificationChannels {
@@ -11,9 +10,9 @@ object NotificationChannels {
     const val REMINDERS = "reminders"
     const val NUDGES = "nudges"
     const val SESSION_END = "focus_session_complete"
+    const val DIGEST = "notification_digest"
 
     fun create(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = requireNotNull(context.getSystemService(NotificationManager::class.java)) {
             "NotificationManager is unavailable."
         }
@@ -37,6 +36,11 @@ object NotificationChannels {
                 NotificationChannel(
                     SESSION_END,
                     context.getString(R.string.focus_session_channel),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ),
+                NotificationChannel(
+                    DIGEST,
+                    context.getString(R.string.digest_notification_channel),
                     NotificationManager.IMPORTANCE_DEFAULT,
                 ),
             ),

@@ -22,6 +22,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -50,7 +51,7 @@ fun TaskEditSheet(
     var recurrenceName by rememberSaveable(task?.id) {
         mutableStateOf((task?.recurrence ?: Recurrence.DAILY).name)
     }
-    var daysMask by rememberSaveable(task?.id) { mutableStateOf(task?.daysMask ?: 0) }
+    var daysMask by rememberSaveable(task?.id) { mutableIntStateOf(task?.daysMask ?: 0) }
     var reminderTime by rememberSaveable(task?.id) { mutableStateOf(task?.reminderTime) }
     var todayValue by rememberSaveable(task?.id) { mutableStateOf(initialValue) }
     var showRecurrenceMenu by rememberSaveable { mutableStateOf(false) }

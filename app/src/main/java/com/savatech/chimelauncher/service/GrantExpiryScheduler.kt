@@ -22,35 +22,45 @@ class GrantExpiryScheduler @Inject constructor(
 ) {
     fun schedule(packageName: String, appLabel: String, expiresAt: Long) {
         createNotificationChannel()
+        val alarmManager = requireNotNull(context.getSystemService(AlarmManager::class.java)) {
+            "AlarmManager is unavailable."
+        }
+        alarmManager.setAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            expiresAt,
+            pendingIntent(packageName, appLabel),
+        )
+    }
+
+    fun cancel(packageName: String) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
+        alarmManager.cancel(pendingIntent(packageName))
+    }
+
+    private fun pendingIntent(packageName: String, appLabel: String? = null): PendingIntent {
         val intent = Intent(context, GrantExpiryReceiver::class.java).apply {
-            putExtra(GrantExpiryReceiver.EXTRA_APP_LABEL, appLabel)
+            if (appLabel != null) putExtra(GrantExpiryReceiver.EXTRA_APP_LABEL, appLabel)
             data = android.net.Uri.parse("chime://grant-expiry/$packageName")
         }
-        val pendingIntent = PendingIntent.getBroadcast(
+        return PendingIntent.getBroadcast(
             context,
             packageName.hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val alarmManager = requireNotNull(context.getSystemService(AlarmManager::class.java)) {
-            "AlarmManager is unavailable."
-        }
-        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, expiresAt, pendingIntent)
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = requireNotNull(context.getSystemService(NotificationManager::class.java)) {
-                "NotificationManager is unavailable."
-            }
-            manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    context.getString(com.savatech.chimelauncher.R.string.grant_notification_channel),
-                    NotificationManager.IMPORTANCE_DEFAULT,
-                ),
-            )
+        val manager = requireNotNull(context.getSystemService(NotificationManager::class.java)) {
+            "NotificationManager is unavailable."
         }
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                context.getString(com.savatech.chimelauncher.R.string.grant_notification_channel),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ),
+        )
     }
 
     companion object {

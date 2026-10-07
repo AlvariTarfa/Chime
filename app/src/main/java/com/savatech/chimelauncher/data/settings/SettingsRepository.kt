@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.savatech.chimelauncher.domain.model.AppCategory
 import com.savatech.chimelauncher.domain.focus.ManualModeOverride
 import com.savatech.chimelauncher.service.NotificationPermissionStore
@@ -14,6 +15,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.JsonElement
 
 interface OnboardingSettings {
     val onboardingCompleted: Flow<Boolean>
@@ -28,6 +30,7 @@ interface OnboardingSettings {
 class SettingsRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
 ) : InterceptSettings, NotificationPermissionStore, OnboardingSettings {
+    private val backupAdapter = SettingsBackupAdapter(dataStore)
     val drawerMode: Flow<DrawerMode> = dataStore.data.map { preferences ->
         DrawerMode.fromStorage(preferences[Keys.drawerMode] ?: DrawerMode.TEXT.name)
     }
@@ -62,6 +65,13 @@ class SettingsRepository @Inject constructor(
     val nudgesEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.nudgesEnabled] ?: false }
     val quietHoursStart: Flow<String?> = dataStore.data.map { it[Keys.quietHoursStart] }
     val quietHoursEnd: Flow<String?> = dataStore.data.map { it[Keys.quietHoursEnd] }
+    val digestEnabled: Flow<Boolean> = dataStore.data.map { it[Keys.digestEnabled] ?: false }
+    val digestFirstTime: Flow<String> = dataStore.data.map { it[Keys.digestFirstTime] ?: "12:00" }
+    val digestSecondTime: Flow<String> = dataStore.data.map { it[Keys.digestSecondTime] ?: "18:00" }
+    val digestAllowList: Flow<Set<String>> =
+        dataStore.data.map { it[Keys.digestAllowList]?.toSet() ?: emptySet() }
+    val digestConsentAccepted: Flow<Boolean> =
+        dataStore.data.map { it[Keys.digestConsentAccepted] ?: false }
 
     val themeMode: Flow<ThemeMode> = dataStore.data.map { preferences ->
         ThemeMode.fromStorage(preferences[Keys.themeMode] ?: ThemeMode.SYSTEM.name)
@@ -133,6 +143,24 @@ class SettingsRepository @Inject constructor(
     suspend fun setWeeklyCheckInEnabled(value: Boolean) =
         dataStore.edit { it[Keys.weeklyCheckInEnabled] = value }
     suspend fun setNudgesEnabled(value: Boolean) = dataStore.edit { it[Keys.nudgesEnabled] = value }
+    suspend fun setDigestEnabled(value: Boolean) =
+        dataStore.edit { it[Keys.digestEnabled] = value }
+    suspend fun setDigestFirstTime(value: String) {
+        java.time.LocalTime.parse(value)
+        dataStore.edit { it[Keys.digestFirstTime] = value }
+    }
+    suspend fun setDigestSecondTime(value: String) {
+        java.time.LocalTime.parse(value)
+        dataStore.edit { it[Keys.digestSecondTime] = value }
+    }
+    suspend fun setDigestConsentAccepted() =
+        dataStore.edit { it[Keys.digestConsentAccepted] = true }
+    suspend fun setDigestAllowListed(packageName: String, allowed: Boolean) =
+        dataStore.edit { preferences ->
+            val packages = preferences[Keys.digestAllowList].orEmpty().toMutableSet()
+            if (allowed) packages.add(packageName) else packages.remove(packageName)
+            preferences[Keys.digestAllowList] = packages
+        }
     suspend fun setQuietHoursStart(value: String?) = updateNullableString(Keys.quietHoursStart, value)
     suspend fun setQuietHoursEnd(value: String?) = updateNullableString(Keys.quietHoursEnd, value)
     suspend fun setThemeMode(value: ThemeMode) = dataStore.edit { it[Keys.themeMode] = value.name }
@@ -174,6 +202,13 @@ class SettingsRepository @Inject constructor(
         it.remove(Keys.manualModeUntil)
     }
 
+    suspend fun exportBackupSettings(): Map<String, JsonElement> = backupAdapter.export()
+    fun validateBackupSettings(settings: Map<String, JsonElement>) = backupAdapter.validate(settings)
+    fun recognizedBackupSettings(settings: Map<String, JsonElement>) = backupAdapter.recognized(settings)
+    suspend fun importBackupSettings(settings: Map<String, JsonElement>, replace: Boolean) =
+        backupAdapter.import(settings, replace)
+    suspend fun clearAllSettings() = backupAdapter.clear()
+
     private suspend fun updateNullableString(key: Preferences.Key<String>, value: String?) {
         dataStore.edit { preferences ->
             if (value == null) {
@@ -210,6 +245,11 @@ class SettingsRepository @Inject constructor(
         val nudgesEnabled = booleanPreferencesKey("nudges_enabled")
         val quietHoursStart = stringPreferencesKey("quiet_hours_start")
         val quietHoursEnd = stringPreferencesKey("quiet_hours_end")
+        val digestEnabled = booleanPreferencesKey("digest_enabled")
+        val digestFirstTime = stringPreferencesKey("digest_first_time")
+        val digestSecondTime = stringPreferencesKey("digest_second_time")
+        val digestAllowList = stringSetPreferencesKey("digest_allow_list")
+        val digestConsentAccepted = booleanPreferencesKey("digest_consent_accepted")
         val themeMode = stringPreferencesKey("theme_mode")
         val useDynamicColor = booleanPreferencesKey("use_dynamic_color")
         val iconShape = stringPreferencesKey("icon_shape")

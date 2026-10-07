@@ -4,16 +4,12 @@ import android.database.sqlite.SQLiteException
 import com.savatech.chimelauncher.data.apps.AppConfigSource
 import com.savatech.chimelauncher.data.apps.AppInfo
 import com.savatech.chimelauncher.data.apps.AppRepository
-import com.savatech.chimelauncher.data.intercept.InterceptRepository
 import com.savatech.chimelauncher.data.settings.InterceptSettings
 import com.savatech.chimelauncher.data.usage.UsageAccess
 import com.savatech.chimelauncher.data.usage.UsageRepository
 import com.savatech.chimelauncher.domain.intercept.InterceptDecision
-import com.savatech.chimelauncher.domain.intercept.InterceptPolicy
 import com.savatech.chimelauncher.domain.intercept.PauseReason
-import com.savatech.chimelauncher.domain.limits.LimitState
 import com.savatech.chimelauncher.domain.limits.effectiveLimit
-import com.savatech.chimelauncher.domain.limits.evaluate
 import com.savatech.chimelauncher.domain.model.AppCategory
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,9 +23,8 @@ import kotlinx.coroutines.flow.first
 class AppLauncher @Inject constructor(
     private val appRepository: AppRepository,
     private val appConfigSource: AppConfigSource,
-    private val interceptRepository: InterceptRepository,
+    private val interceptCoordinator: InterceptCoordinator,
     private val settings: InterceptSettings,
-    private val policy: InterceptPolicy,
     private val usageRepository: UsageRepository,
     private val usagePermission: UsageAccess,
     private val clock: Clock,
@@ -38,30 +33,8 @@ class AppLauncher @Inject constructor(
 
     suspend fun requestLaunch(app: AppInfo): LaunchResult {
         return try {
-            val config = appConfigSource.getConfig(app.packageName)
-            val category = config?.category?.let(AppCategory::fromStorage) ?: AppCategory.NEUTRAL
-            val categoryLimit = settings.categoryDailyLimits.first()[category]
-            val limitMinutes = effectiveLimit(config?.dailyLimitMin, categoryLimit)
-            val usedMillis = if (limitMinutes != null && usagePermission.isGranted()) {
-                usageRepository.dailyAppUsage(LocalDate.now(clock))[app.packageName] ?: 0L
-            } else {
-                0L
-            }
-            val limitReached = evaluate(usedMillis, limitMinutes) == LimitState.Reached
-            val hasGrant = interceptRepository.hasActiveGrant(app.packageName)
-            val frictionLevel = settings.frictionLevel.first()
-            val baseDelaySeconds = settings.baseDelaySeconds.first()
-            val openedTodayCount = interceptRepository.openedTodayCount(app.packageName)
-            when (
-                val decision = policy.decide(
-                    category = category,
-                    hasActiveGrant = hasGrant,
-                    frictionLevel = frictionLevel,
-                    baseDelaySeconds = baseDelaySeconds,
-                    openedTodayCount = openedTodayCount,
-                    limitReached = limitReached,
-                )
-            ) {
+            val evaluation = interceptCoordinator.evaluate(app.packageName)
+            when (val decision = evaluation.decision) {
                 InterceptDecision.Allow -> launchApp(app)
                 is InterceptDecision.Pause -> LaunchResult.NeedsPause(
                     PauseLaunchArgs(
@@ -71,8 +44,10 @@ class AppLauncher @Inject constructor(
                         appLabel = app.label,
                         delaySeconds = decision.delaySeconds,
                         reason = decision.reason,
-                        usedMillis = usedMillis,
-                        limitMinutes = limitMinutes.takeIf { decision.reason == PauseReason.LIMIT_REACHED },
+                        usedMillis = evaluation.usedMillis,
+                        limitMinutes = evaluation.limitMinutes.takeIf {
+                            decision.reason == PauseReason.LIMIT_REACHED
+                        },
                     ),
                 )
             }

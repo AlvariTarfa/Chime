@@ -58,6 +58,9 @@ fun SettingsScreen(
     onOpenHiddenApps: () -> Unit,
     onOpenCheckInHistory: () -> Unit,
     onOpenInsights: () -> Unit,
+    onOpenDigest: () -> Unit,
+    onOpenAccessibilityDisclosure: () -> Unit,
+    onOpenDataManagement: () -> Unit,
     onRunSetupAgain: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -66,6 +69,7 @@ fun SettingsScreen(
     val assumedMinutesPerOpen by viewModel.assumedMinutesPerOpen.collectAsStateWithLifecycle()
     val focusScoreEnabled by viewModel.focusScoreEnabled.collectAsStateWithLifecycle()
     val usagePermissionGranted by viewModel.usagePermissionGranted.collectAsStateWithLifecycle()
+    val accessibilityServiceEnabled by viewModel.accessibilityServiceEnabled.collectAsStateWithLifecycle()
     val morningEnabled by viewModel.morningCheckInEnabled.collectAsStateWithLifecycle()
     val morningTime by viewModel.morningCheckInTime.collectAsStateWithLifecycle()
     val eveningEnabled by viewModel.eveningCheckInEnabled.collectAsStateWithLifecycle()
@@ -88,11 +92,15 @@ fun SettingsScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, viewModel) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshUsagePermission()
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshUsagePermission()
+                viewModel.refreshAccessibilityService()
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    LaunchedEffect(viewModel) { viewModel.refreshAccessibilityService() }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -120,12 +128,31 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.accessibility_pause_status), style = MaterialTheme.typography.titleLarge)
+        Text(
+            stringResource(
+                when (accessibilityServiceEnabled) {
+                    true -> R.string.accessibility_service_enabled
+                    false -> R.string.accessibility_service_disabled
+                    null -> R.string.accessibility_service_checking
+                },
+            ),
+        )
+        TextButton(onClick = onOpenAccessibilityDisclosure) {
+            Text(stringResource(R.string.accessibility_pause_title))
+        }
         CustomizationSettings(viewModel)
         TextButton(onClick = onRunSetupAgain) {
             Text(stringResource(R.string.run_setup_again))
         }
+        TextButton(onClick = onOpenDataManagement) {
+            Text(stringResource(R.string.data_management_title))
+        }
         TextButton(onClick = onOpenInsights) {
             Text(stringResource(R.string.insights_title))
+        }
+        TextButton(onClick = onOpenDigest) {
+            Text(stringResource(R.string.digest_settings_title))
         }
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             Switch(

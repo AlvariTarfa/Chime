@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 internal object TestSchedulerRescheduler : SchedulerRescheduler {
     override suspend fun rescheduleAll() = Unit
+    override suspend fun scheduleNextDigest(slot: String) = Unit
 }
 
 internal object TestNotificationPermissionStore : NotificationPermissionStore {

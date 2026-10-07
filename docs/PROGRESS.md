@@ -18,10 +18,21 @@
 - [x] Prompt 13 — insights aggregation, Today/Trends/Weekly reports, Canvas charts with TalkBack summaries, permission state, goal/category/intercept metrics, and SAF CSV export implemented; required build, unit-test, and lint command passes; manual device checks remain
 - [x] Prompt 14 — SavedStateHandle-backed onboarding, first-run routing gate, system setup steps, initial goals and priorities, app classification, friction choice, and Settings rerun; device checks remain
 - [x] Prompt 15 — theme modes, API 31+ dynamic color, resource accent palette, icon shapes and packs, font presets, density, and home swipe-to-launch settings; required build/unit-test/lint command passes, manual device checks remain
-- [ ] Prompt 16
-- [ ] Prompt 17
-- [ ] Prompt 18
-- [ ] Prompt 19
+- [x] Prompt 16 — consent-gated notification listener, distracting-app filter, allow-list, scheduled local digests, in-app history, retention, and pure filter/summary tests; requested build/test/lint validation passed; real-device checks remain
+- [x] Prompt 17 — package-only accessibility foreground detection, shared interception coordinator, lifecycle-owned pause overlay, prominent disclosure and settings status implemented; requested build/unit-test/lint command passes; manual device checks and Play Console declaration remain
+- [x] Prompt 18 — versioned local JSON backup/restore, transactional merge/replace with referential validation and previews, privacy disclosure/deletion, backup exclusions, and JVM fake-backed tests implemented; required build, tests, Android-test compilation, and lint pass. Manual device checks remain.
+- [x] Prompt 19 — release R8/resource shrinking, environment-only signing, version properties, StrictMode, schema freeze, audit/docs, and release artifact builds completed; runtime device checks remain.
+
+## Current release hardening status
+
+- Release build passes with R8 minification and resource shrinking enabled for app release artifacts.
+- Signing is configured only via KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD; when missing, the app prints a clear warning and still assembles unsigned artifacts.
+- versionCode/versionName read from gradle.properties.
+- Room schema is frozen and fallbackToDestructiveMigration has been removed from all builds.
+- Debug StrictMode is enabled with disk penalty logging; no main-thread disk violations were detected in the checked code paths.
+- Release lint reports 0 errors; remaining warnings are non-blocking dependency/tooling advisories.
+- Generated release artifacts: unsigned APK and signed AAB-like bundle task output are available in the build outputs, though a fully signed release certificate requires real keystore variables in CI or local environment.
+- Manual device validation remains pending on physical hardware.
 
 ## What exists
 
@@ -64,16 +75,33 @@
 - Prompt 10 verification: `./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug` succeeds. Manual check of a two-minute limit, reasoned override/event logging, and clearing the limit remains pending.
 - Prompt 13 computes 7- and 30-day reports on demand using Prompt 9's usage cache rather than persisting duplicate daily aggregates. It adds category and active-goal-linked totals, saved-task completion rates, limit/intercept metrics, optional focus score, Canvas bar/line charts, 7-day comparison takeaways, weekly highlights, and UTF-8 CSV export through `CreateDocument`. Explicit SHOWN pause events are included in counts. Pure tests cover aggregation, takeaway thresholds/direction, CSV escaping, and chart scaling.
 - Prompt 13 verification: `./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug` completed successfully.
+- Prompt 16 adds consent before Android notification-listener settings, live access status, ordered pure filtering, on-device title/text storage for eligible Distracting apps, a multi-select allow-list, and user-configurable daily digest times defaulting to 12:00 and 18:00. WorkManager posts one expandable summary with grouped app counts, marks items delivered, and prunes delivered items after seven days; the in-app screen groups saved items by app and can clear them all. README and consent copy explain listener visibility, local-only storage, revocation, and that cancelled shade notifications cannot be restored. Tests cover filter branches/eligibility, summary counts/line limit, truncation, and empty digests.
+- Prompt 16 verification: `./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug` succeeds with 133 JVM tests passing; lint reports 0 errors. Manual notification-listener and notification-posting checks remain.
+- Prompt 17 adds an explicitly disclosed AccessibilityService that listens only for window-state changes and reads only each event's package name. It ignores Chime, System UI, enabled input methods, and the resolved Home app, debounces repeated package events, and evaluates through the same `InterceptCoordinator` as AppLauncher. A `TYPE_ACCESSIBILITY_OVERLAY` Compose pause surface reuses existing limit/grant persistence and sends Go back to Home through `GLOBAL_ACTION_HOME`. Settings reports service state from `ENABLED_ACCESSIBILITY_SERVICES`; the in-app disclosure states what is and is not read, local-only handling, and how to disable it.
+- Prompt 17 verification: `./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug` succeeds with 137 JVM tests passing and lint reporting 0 errors, 45 warnings, and 1 hint. Pure tests cover package exclusions, two-second debounce, and launcher/coordinator decision parity. Real-device checks remain; the Play Console AccessibilityService declaration must be completed before release.
+- Prompt 18 adds a schema-v1 JSON backup containing goals, tasks/logs, priorities, app settings, focus records, check-ins, intercept events, and typed known settings; digest notification content and app grants are excluded. Export reads a consistent Room snapshot in one transaction. Import supports dry-run Merge/Replace previews, typed schema/JSON/settings errors, relationship validation with skipped-row reports, timestamp-aware collision handling, one Room transaction, and post-import schedule restoration.
+- Prompt 18 adds a Settings SAF export/import flow, result report, local-data privacy disclosure, and type-DELETE data deletion that clears Room, DataStore, WorkManager work, focus/grant alarms, and posted notifications before returning to onboarding. Android cloud backup and device transfer explicitly exclude the database and DataStore.
+- Prompt 18 verification: `./gradlew :app:assembleDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin :app:lintDebug` succeeds with 144 JVM tests passing, including 7 backup tests; lint reports 0 errors, 46 warnings, and 1 hint. A Room-backed export/replace round-trip instrumentation test was added and compiled, but not run on a device.
+- Prompt 19 audit found no project `UNVERIFIED:` markers and no API 26–27 call-path crash risks. Room destructive migration fallback was removed from all variants; committed schema v1 matches the compiled entities, and future schema changes require a tested `Migration`.
+- Prompt 19 enables R8 minification/resource shrinking, scoped keep rules for serializable models, Room's generated database implementation, class-name-instantiated workers, and manifest components. Hilt uses compile-time generated references and its dependency's consumer rules; no blanket Hilt keep was added. Version values now come from `gradle.properties`; release signing reads only the four requested environment variables and clearly warns when any are missing.
+- Prompt 19 enables debug StrictMode disk-read/write detection with `penaltyLog`. Source review found PackageManager, LauncherApps, usage-event, icon-resource, and SAF file work dispatched away from the main thread. Drawer list/grid are lazy and use profile-aware stable app keys; a 300-app runtime recomposition measurement was not possible here.
+- Prompt 19 verification: the requested clean combined command's Gradle daemon disappeared during concurrent work without a compiler/R8 diagnostic. Retrying with `--no-daemon --max-workers=1 -Dorg.gradle.jvmargs=-Xmx1g` passed clean, all 144 JVM tests (0 failures/errors), release lint (0 errors; 46 warnings and 1 hint), R8, release APK assembly, and AAB bundling. Release outputs are unsigned because signing environment variables were absent. No device/emulator or `adb` is available for launch-path or StrictMode logcat checks; no baseline profile was added.
+- Prompt 19 adds README build/permission guidance, a behavior-matched local-data privacy policy, and a Play Store checklist with data-safety, special-access, visibility, target SDK, screenshots, and closed-testing review steps.
 
 ## What's next
 
-- Continue with Prompt 14.
+- Install a CI- or owner-signed release APK on a real phone and complete the manual flow in the task; run on the oldest available Android version and review StrictMode/logcat.
+- Upload the CI- or owner-signed AAB to the Play closed-testing track after completing the checklist.
 
 ## Known issues
 
 - Manual real-device installation, Home-app selection, and wallpaper confirmation have not been performed.
 - Instrumented Room DAO tests have not been run; execute them on a phone or CI with an Android device/emulator.
-- Latest Prompt 13 lint verification reports 34 warnings and 0 errors; no lint warnings point to insights code.
+- Latest Prompt 19 release lint reports 0 errors, 46 warnings, and 1 hint; the remaining findings and keep decisions are reported with this release review.
+- Release APK and AAB were built unsigned because the signing environment was absent. A signed store upload and physical-device release launch remain pending.
+- No emulator or `adb` binary is present in this environment. Debug StrictMode is configured but runtime violations could not be observed here.
+- Prompt 17 manual check remains: enable Accessibility pause, open a Distracting app from a notification or another app, confirm the overlay and Home action, then disable the service and confirm clean shutdown. Complete the Play Console AccessibilityService declaration before release.
+- Prompt 18 manual check remains: export a JSON backup, delete all data from the privacy screen, finish onboarding, import the backup, and verify goals, streaks, app categories, focus data, and settings are restored.
 - Prompt 4 manual pin/hide/mode/category checks have not been performed.
 - Prompt 6 manual checks remain: create a goal with two tasks, complete one and inspect progress/streak changes, force-stop/reopen to verify persistence, confirm the fourth daily priority is rejected and paused goals cannot be selected, and rotate the device during form editing.
 - Prompt 7 manual checks remain: verify the home flow over bright/dark wallpapers, goal creation and prioritization, swipe-up drawer, dock launches, and date rollover on a real device.
@@ -89,3 +117,4 @@
 - Session credits mark a linked task's TaskLog complete for the local date of reconciliation. If that goal's unit is minute/minutes/min/mins, the planned focus minutes are added to that TaskLog value; hour units add fractional hours and second units add seconds. Existing non-time TaskLog values are preserved. Without a linked task, the current schema has no goal-level progress-log row, so completion is recorded on the session only and no goal value is changed. The goal's targetValue is never mutated.
 - Prompt 11 unit tests cover overnight/day-boundary/override/overlap/no-mode resolution, persisted-session remaining-time arithmetic, session crediting, and allowed/always-allowed/hidden visibility. `./gradlew --no-daemon --max-workers=1 -Dorg.gradle.jvmargs=-Xmx1g :app:assembleDebug :app:testDebugUnitTest :app:lintDebug` succeeds: 95 tests, 0 failures/errors; lint reports 0 errors, 33 warnings, and 1 hint. Manual device checks remain: allowed-app behavior, scheduled activation, process-kill countdown/alarm/reopen completion, and Sleep rendering.
 - Prompt 15 adds persisted theme mode, API-gated dynamic color, eight resource-defined accent colors, font presets, icon shapes, and compact/comfortable/spacious layout metrics. It applies icon-pack appfilter mappings with app-icon fallback, shape clipping at draw time, app-specific left/right home swipe launch through AppLauncher, and settings previews/pickers. Parser, theme-mode/API-availability, shape-mapping, and settings round-trip tests are included. `./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug` succeeds: 126 tests, 0 failures/errors; lint passes. Manual device checks remain: switch all theme modes/fonts, install/apply/remove an icon pack and verify fallback, change shapes/density, and verify both configured swipe launches.
+- Prompt 16 real-device checks remain: grant listener access after reading consent, classify an app as Distracting, verify eligible notifications leave the shade and enter the digest at selected times, confirm calls/alarms/default dialer/SMS/media notifications and allow-listed apps remain unaffected, and revoke access to confirm the listener stops.

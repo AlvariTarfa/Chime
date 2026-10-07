@@ -1,7 +1,6 @@
 package com.savatech.chimelauncher.core.di
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import androidx.room.Room
 import com.savatech.chimelauncher.data.db.AppDatabase
 import com.savatech.chimelauncher.data.db.dao.AppConfigDao
@@ -14,6 +13,7 @@ import com.savatech.chimelauncher.data.db.dao.TaskDao
 import com.savatech.chimelauncher.data.db.dao.TaskLogDao
 import com.savatech.chimelauncher.data.db.dao.FocusModeDao
 import com.savatech.chimelauncher.data.db.dao.FocusSessionDao
+import com.savatech.chimelauncher.data.db.dao.DigestItemDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,11 +27,7 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
-        val builder = Room.databaseBuilder(context, AppDatabase::class.java, DATABASE_NAME)
-        if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
-            builder.fallbackToDestructiveMigration(dropAllTables = true)
-        }
-        return builder.build()
+        return Room.databaseBuilder(context, AppDatabase::class.java, DATABASE_NAME).build()
     }
 
     @Provides
@@ -63,6 +59,9 @@ object DatabaseModule {
 
     @Provides
     fun provideCheckInDao(database: AppDatabase): CheckInDao = database.checkInDao()
+
+    @Provides
+    fun provideDigestItemDao(database: AppDatabase): DigestItemDao = database.digestItemDao()
 
     private const val DATABASE_NAME = "chime.db"
 }

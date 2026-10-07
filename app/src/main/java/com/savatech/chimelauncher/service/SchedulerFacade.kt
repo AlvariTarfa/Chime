@@ -7,6 +7,7 @@ import com.savatech.chimelauncher.domain.checkin.nextDailyOccurrence
 import com.savatech.chimelauncher.domain.checkin.nextWeeklyOccurrence
 import com.savatech.chimelauncher.domain.model.GoalStatus
 import com.savatech.chimelauncher.service.work.CheckInWorker
+import com.savatech.chimelauncher.service.work.DigestWorker
 import com.savatech.chimelauncher.service.work.NudgeWorker
 import com.savatech.chimelauncher.service.work.TaskReminderWorker
 import com.savatech.chimelauncher.service.work.WorkRequestScheduler
@@ -50,6 +51,8 @@ class SchedulerFacade @Inject constructor(
             settings.weeklyCheckInDay.first(),
         )
         scheduleNextNudge()
+        scheduleDigest(DigestWorker.MIDDAY, settings.digestFirstTime.first(), now)
+        scheduleDigest(DigestWorker.EVENING, settings.digestSecondTime.first(), now)
         scheduler.cancelTaskReminders()
         val activeGoalIds = goals.observeGoals(GoalStatus.ACTIVE).first().map { it.id }
         activeGoalIds.flatMap { goals.observeTasks(it).first() }
@@ -114,6 +117,26 @@ class SchedulerFacade @Inject constructor(
                 emptyMap(),
             )
         }
+
+    }
+
+    override suspend fun scheduleNextDigest(slot: String) = withContext(ioDispatcher) {
+        val timeValue = when (slot) {
+            DigestWorker.MIDDAY -> settings.digestFirstTime.first()
+            DigestWorker.EVENING -> settings.digestSecondTime.first()
+            else -> error("Unknown digest schedule slot: $slot")
+        }
+        scheduleDigest(slot, timeValue, LocalDateTime.now(clock))
+    }
+
+    private fun scheduleDigest(slot: String, timeValue: String, now: LocalDateTime) {
+        val occurrence = nextDailyOccurrence(now, LocalTime.parse(timeValue))
+        scheduler.enqueueUnique(
+            digestWorkName(slot),
+            DigestWorker.WORKER_NAME,
+            occurrenceClockDelay(now, occurrence),
+            mapOf(DigestWorker.KEY_SLOT to slot),
+        )
     }
 
     private fun scheduleCheckIn(
@@ -150,6 +173,7 @@ class SchedulerFacade @Inject constructor(
 
     companion object {
         const val NUDGE_WORK_NAME = "daily-nudge"
+        fun digestWorkName(slot: String) = "notification-digest-$slot"
         fun checkInWorkName(type: String) = "check-in-$type"
         fun taskReminderWorkName(taskId: String) = "task-reminder-$taskId"
     }

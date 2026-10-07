@@ -4,6 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.savatech.chimelauncher.data.db.dao.AppConfigDao
 import com.savatech.chimelauncher.data.db.dao.AppGrantDao
+import com.savatech.chimelauncher.data.db.dao.BackupDao
 import com.savatech.chimelauncher.data.db.dao.CheckInDao
 import com.savatech.chimelauncher.data.db.dao.DailyPriorityDao
 import com.savatech.chimelauncher.data.db.dao.DigestItemDao
@@ -54,4 +55,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun focusSessionDao(): FocusSessionDao
     abstract fun checkInDao(): CheckInDao
     abstract fun digestItemDao(): DigestItemDao
+    abstract fun backupDao(): BackupDao
 }

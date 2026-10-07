@@ -276,4 +276,115 @@ interface DigestItemDao {
 
     @Query("SELECT * FROM digest_items")
     fun observeAll(): Flow<List<DigestItem>>
+
+    @Query("SELECT * FROM digest_items WHERE delivered = 0 ORDER BY posted_at")
+    suspend fun getUndelivered(): List<DigestItem>
+
+    @Query("UPDATE digest_items SET delivered = 1 WHERE id IN (:ids)")
+    suspend fun markDelivered(ids: List<Long>)
+
+    @Query("DELETE FROM digest_items WHERE delivered = 1 AND posted_at < :cutoff")
+    suspend fun deleteDeliveredBefore(cutoff: Long)
+
+    @Query("DELETE FROM digest_items")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface BackupDao {
+    @Query("SELECT * FROM goals")
+    suspend fun goals(): List<Goal>
+
+    @Query("SELECT * FROM tasks")
+    suspend fun tasks(): List<Task>
+
+    @Query("SELECT * FROM task_logs")
+    suspend fun taskLogs(): List<TaskLog>
+
+    @Query("SELECT * FROM daily_priorities")
+    suspend fun dailyPriorities(): List<DailyPriority>
+
+    @Query("SELECT * FROM app_configs")
+    suspend fun appConfigs(): List<AppConfig>
+
+    @Query("SELECT * FROM focus_modes")
+    suspend fun focusModes(): List<FocusMode>
+
+    @Query("SELECT * FROM focus_sessions")
+    suspend fun focusSessions(): List<FocusSession>
+
+    @Query("SELECT * FROM check_ins")
+    suspend fun checkIns(): List<CheckIn>
+
+    @Query("SELECT * FROM intercept_events")
+    suspend fun interceptEvents(): List<InterceptEvent>
+
+    @Query("SELECT * FROM app_grants")
+    suspend fun appGrants(): List<AppGrant>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putGoals(rows: List<Goal>)
+
+    @Update
+    suspend fun updateGoals(rows: List<Goal>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putTasks(rows: List<Task>)
+
+    @Update
+    suspend fun updateTasks(rows: List<Task>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putTaskLogs(rows: List<TaskLog>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putDailyPriorities(rows: List<DailyPriority>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putAppConfigs(rows: List<AppConfig>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putFocusModes(rows: List<FocusMode>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putFocusSessions(rows: List<FocusSession>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putCheckIns(rows: List<CheckIn>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putInterceptEvents(rows: List<InterceptEvent>)
+
+    @Query("DELETE FROM task_logs")
+    suspend fun clearTaskLogs()
+
+    @Query("DELETE FROM tasks")
+    suspend fun clearTasks()
+
+    @Query("DELETE FROM daily_priorities")
+    suspend fun clearDailyPriorities()
+
+    @Query("DELETE FROM app_configs")
+    suspend fun clearAppConfigs()
+
+    @Query("DELETE FROM app_grants")
+    suspend fun clearAppGrants()
+
+    @Query("DELETE FROM intercept_events")
+    suspend fun clearInterceptEvents()
+
+    @Query("DELETE FROM focus_sessions")
+    suspend fun clearFocusSessions()
+
+    @Query("DELETE FROM check_ins")
+    suspend fun clearCheckIns()
+
+    @Query("DELETE FROM digest_items")
+    suspend fun clearDigestItems()
+
+    @Query("DELETE FROM focus_modes")
+    suspend fun clearFocusModes()
+
+    @Query("DELETE FROM goals")
+    suspend fun clearGoals()
 }

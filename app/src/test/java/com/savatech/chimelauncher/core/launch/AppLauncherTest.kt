@@ -11,6 +11,7 @@ import com.savatech.chimelauncher.data.settings.FrictionLevel
 import com.savatech.chimelauncher.data.settings.InterceptSettings
 import com.savatech.chimelauncher.data.usage.UsageAccess
 import com.savatech.chimelauncher.data.usage.UsageRepository
+import com.savatech.chimelauncher.domain.intercept.InterceptDecision
 import com.savatech.chimelauncher.domain.intercept.InterceptPolicy
 import com.savatech.chimelauncher.domain.intercept.PauseReason
 import com.savatech.chimelauncher.domain.model.AppCategory
@@ -21,6 +22,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
@@ -38,6 +40,24 @@ class AppLauncherTest {
         assertTrue(result is LaunchResult.NeedsPause)
         assertEquals(8, (result as LaunchResult.NeedsPause).args.delaySeconds)
         assertFalse(appRepository.launched)
+    }
+
+    @Test
+    fun appLauncherAndForegroundCoordinatorUseTheSameDecision() = runBlocking {
+        val fixture = fixture(
+            category = AppCategory.DISTRACTING,
+            hasGrant = false,
+            appRepository = FakeAppRepository(),
+        )
+        val coordinatorDecision = fixture.coordinator.evaluate(TEST_APP.packageName).decision
+        val launchResult = fixture.launcher.requestLaunch(TEST_APP)
+
+        assertTrue(launchResult is LaunchResult.NeedsPause)
+        val args = (launchResult as LaunchResult.NeedsPause).args
+        assertEquals(
+            coordinatorDecision,
+            InterceptDecision.Pause(args.delaySeconds, args.reason),
+        )
     }
 
     @Test
@@ -128,9 +148,26 @@ class AppLauncherTest {
         categoryLimit: Int? = null,
         usedMillis: Long = 0L,
         usagePermissionGranted: Boolean = true,
-    ) = AppLauncher(
-        appRepository = appRepository,
-        appConfigSource = object : AppConfigSource {
+    ) = fixture(
+        category,
+        hasGrant,
+        appRepository,
+        appLimit,
+        categoryLimit,
+        usedMillis,
+        usagePermissionGranted,
+    ).launcher
+
+    private fun fixture(
+        category: AppCategory,
+        hasGrant: Boolean,
+        appRepository: FakeAppRepository,
+        appLimit: Int? = null,
+        categoryLimit: Int? = null,
+        usedMillis: Long = 0L,
+        usagePermissionGranted: Boolean = true,
+    ): LauncherFixture {
+        val appConfigSource = object : AppConfigSource {
             private val config = AppConfig(
                 packageName = TEST_APP.packageName,
                 category = category.name,
@@ -143,8 +180,8 @@ class AppLauncherTest {
             override suspend fun getConfig(packageName: String): AppConfig = config
             override suspend fun getAllConfigs(): Map<String, AppConfig> =
                 mapOf(TEST_APP.packageName to config)
-        },
-        interceptRepository = object : InterceptRepository {
+        }
+        val interceptRepository = object : InterceptRepository {
             override suspend fun hasActiveGrant(packageName: String) = hasGrant
             override suspend fun openedTodayCount(packageName: String) = 0
             override suspend fun logEvent(
@@ -159,22 +196,48 @@ class AppLauncherTest {
                 startInclusive: Long,
                 endExclusive: Long,
             ): List<InterceptEvent> = emptyList()
-        },
-        settings = object : InterceptSettings {
+        }
+        val settings = object : InterceptSettings {
             override val frictionLevel: Flow<FrictionLevel> = MutableStateFlow(FrictionLevel.BALANCED)
             override val baseDelaySeconds: Flow<Int> = MutableStateFlow(8)
             override val categoryDailyLimits: Flow<Map<AppCategory, Int>> =
                 MutableStateFlow(if (categoryLimit == null) emptyMap() else mapOf(category to categoryLimit))
-        },
-        policy = InterceptPolicy(),
-        usageRepository = object : UsageRepository {
+        }
+        val usageRepository = object : UsageRepository {
             override suspend fun dailyAppUsage(date: LocalDate) = mapOf(TEST_APP.packageName to usedMillis)
             override suspend fun pickups(date: LocalDate): Int? = null
             override suspend fun firstPickup(date: LocalDate): LocalTime? = null
             override suspend fun longestSession(date: LocalDate): Duration? = null
-        },
-        usagePermission = UsageAccess { usagePermissionGranted },
-        clock = Clock.fixed(Instant.parse("2026-10-05T12:00:00Z"), ZoneOffset.UTC),
+        }
+        val usagePermission = UsageAccess { usagePermissionGranted }
+        val clock = Clock.fixed(Instant.parse("2026-10-05T12:00:00Z"), ZoneOffset.UTC)
+        val coordinator = InterceptCoordinator(
+            appConfigSource = appConfigSource,
+            interceptRepository = interceptRepository,
+            settings = settings,
+            policy = InterceptPolicy(),
+            usageRepository = usageRepository,
+            usagePermission = usagePermission,
+            clock = clock,
+            ioDispatcher = Dispatchers.Unconfined,
+        )
+        return LauncherFixture(
+            launcher = AppLauncher(
+                appRepository = appRepository,
+                appConfigSource = appConfigSource,
+                interceptCoordinator = coordinator,
+                settings = settings,
+                usageRepository = usageRepository,
+                usagePermission = usagePermission,
+                clock = clock,
+            ),
+            coordinator = coordinator,
+        )
+    }
+
+    private data class LauncherFixture(
+        val launcher: AppLauncher,
+        val coordinator: InterceptCoordinator,
     )
 
     private class FakeAppRepository : AppRepository {

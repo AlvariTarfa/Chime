@@ -15,6 +15,8 @@ import androidx.work.WorkerParameters
 import com.savatech.chimelauncher.MainActivity
 import com.savatech.chimelauncher.R
 import com.savatech.chimelauncher.data.goals.GoalRepository
+import com.savatech.chimelauncher.data.apps.AppRepository
+import com.savatech.chimelauncher.data.db.dao.DigestItemDao
 import com.savatech.chimelauncher.data.settings.SettingsRepository
 import com.savatech.chimelauncher.domain.checkin.isWithinQuietHours
 import com.savatech.chimelauncher.domain.checkin.shouldPostNudge
@@ -39,6 +41,8 @@ interface ReminderWorkerEntryPoint {
     fun settingsRepository(): SettingsRepository
     fun schedulerFacade(): SchedulerFacade
     fun clock(): Clock
+    fun digestItemDao(): DigestItemDao
+    fun appRepository(): AppRepository
 }
 
 class CheckInWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -172,7 +176,7 @@ class NudgeWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
     }
 }
 
-private fun CoroutineWorker.dependencies(): ReminderWorkerEntryPoint =
+internal fun CoroutineWorker.dependencies(): ReminderWorkerEntryPoint =
     EntryPointAccessors.fromApplication(applicationContext, ReminderWorkerEntryPoint::class.java)
 
 private fun CoroutineWorker.canPost(): Boolean =

@@ -5,6 +5,10 @@ captures/
 local.properties
 *.keystore
 *.jks
+*.p12
+*.pfx
+keystore.properties
+signing.properties
 
 # IDEs
 .idea/

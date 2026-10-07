@@ -8,6 +8,7 @@ import javax.inject.Singleton
 
 interface SchedulerRescheduler {
     suspend fun rescheduleAll()
+    suspend fun scheduleNextDigest(slot: String)
 }
 
 @Module
